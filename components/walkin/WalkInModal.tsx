@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Reservation } from '@/types'
 import {
   Dialog,
@@ -26,12 +26,21 @@ interface WalkInModalProps {
   onCreated: (reservation: Reservation) => void
 }
 
-const CATEGORIES = ['Indoor', 'Outdoor', 'VIP', 'Bar']
+const FALLBACK_CATEGORIES = ['Indoor', 'Outdoor', 'VIP', 'Bar']
 
 export function WalkInModal({ open, onClose, onCreated }: WalkInModalProps) {
   const [partySize, setPartySize] = useState(2)
   const [category, setCategory] = useState('Indoor')
+  const [categories, setCategories] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    if (!open) return
+    fetch('/api/categories')
+      .then((r) => r.json())
+      .then((d) => setCategories(d.categories ?? []))
+      .catch(() => setCategories(FALLBACK_CATEGORIES))
+  }, [open])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -89,10 +98,10 @@ export function WalkInModal({ open, onClose, onCreated }: WalkInModalProps) {
             <Label className="text-xs font-medium text-gray-700">Category preference</Label>
             <Select value={category} onValueChange={(v) => v && setCategory(v)}>
               <SelectTrigger className="h-8 text-sm">
-                <SelectValue />
+                <SelectValue placeholder={categories.length === 0 ? 'Loading...' : undefined} />
               </SelectTrigger>
               <SelectContent>
-                {CATEGORIES.map((c) => (
+                {categories.map((c) => (
                   <SelectItem key={c} value={c} className="text-sm">
                     {c}
                   </SelectItem>

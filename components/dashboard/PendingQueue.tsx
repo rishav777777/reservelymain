@@ -9,6 +9,7 @@ import { toast } from 'sonner'
 interface PendingQueueProps {
   reservations: Reservation[]
   onUpdate: (id: string, newStatus: 'confirmed' | 'rejected') => void
+  onSelect: (r: Reservation) => void
   loading?: boolean
 }
 
@@ -37,7 +38,7 @@ function EmptyState() {
   )
 }
 
-export const PendingQueue = memo(function PendingQueue({ reservations, onUpdate, loading = false }: PendingQueueProps) {
+export const PendingQueue = memo(function PendingQueue({ reservations, onUpdate, onSelect, loading = false }: PendingQueueProps) {
   const [loadingId, setLoadingId] = useState<string | null>(null)
 
   async function handleAction(id: string, status: 'confirmed' | 'rejected') {
@@ -91,6 +92,12 @@ export const PendingQueue = memo(function PendingQueue({ reservations, onUpdate,
               className="bg-white rounded-lg border border-zinc-200 shadow-sm p-3 space-y-2"
             >
               <p className="text-xs font-medium text-zinc-900 truncate">{r.guest_name}</p>
+              <button
+                onClick={() => onSelect(r)}
+                className="text-xs text-zinc-400 hover:text-zinc-700 transition-colors duration-150 text-left"
+              >
+                View details →
+              </button>
               <div className="flex items-center gap-2 text-xs text-zinc-400">
                 <span className="flex items-center gap-1">
                   <Users size={10} />

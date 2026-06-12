@@ -129,7 +129,7 @@ export function DashboardClient({
       {/* Right panel */}
       <aside className="w-56 shrink-0 border-l border-zinc-200 bg-white overflow-auto">
         <div className="p-4 space-y-6">
-          <PendingQueue reservations={pending} onUpdate={handlePendingUpdate} />
+          <PendingQueue reservations={pending} onUpdate={handlePendingUpdate} onSelect={handleSelectReservation} />
           <div className="border-t border-zinc-100 pt-5">
             <NoticesPanel notices={notices} />
           </div>

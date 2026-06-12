@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Reservation } from '@/types'
 import {
   Dialog,
@@ -27,7 +27,7 @@ interface CreateReservationModalProps {
   onCreated: (reservation: Reservation) => void
 }
 
-const CATEGORIES = ['Indoor', 'Outdoor', 'VIP', 'Bar']
+const FALLBACK_CATEGORIES = ['Indoor', 'Outdoor', 'VIP', 'Bar']
 
 const TIME_SLOTS: string[] = (() => {
   const slots: string[] = []
@@ -48,10 +48,19 @@ export function CreateReservationModal({ open, onClose, onCreated }: CreateReser
   const [date, setDate]                       = useState(DEFAULT_DATE)
   const [time, setTime]                       = useState('19:00')
   const [category, setCategory]               = useState('')
+  const [categories, setCategories]           = useState<string[]>([])
   const [specialRequests, setSpecialRequests] = useState('')
   const [messageText, setMessageText]         = useState('')
   const [loading, setLoading]                 = useState(false)
   const [error, setError]                     = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!open) return
+    fetch('/api/categories')
+      .then((r) => r.json())
+      .then((d) => setCategories(d.categories ?? []))
+      .catch(() => setCategories(FALLBACK_CATEGORIES))
+  }, [open])
 
   function reset() {
     setGuestName('')
@@ -189,10 +198,10 @@ export function CreateReservationModal({ open, onClose, onCreated }: CreateReser
               <Label className="text-xs font-medium text-gray-700">Category</Label>
               <Select value={category} onValueChange={(v) => v && setCategory(v)}>
                 <SelectTrigger className="h-8 text-sm">
-                  <SelectValue placeholder="Any" />
+                  <SelectValue placeholder={categories.length === 0 ? 'Loading...' : 'Any'} />
                 </SelectTrigger>
                 <SelectContent>
-                  {CATEGORIES.map((c) => (
+                  {categories.map((c) => (
                     <SelectItem key={c} value={c} className="text-sm">{c}</SelectItem>
                   ))}
                 </SelectContent>
