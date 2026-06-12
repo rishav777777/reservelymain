@@ -14,7 +14,7 @@ export default async function DashboardPage() {
 
   const today = new Date().toISOString().split('T')[0]
 
-  const [profileResult, reservationsResult, noticesResult] = await Promise.all([
+  const [profileResult, reservationsResult, noticesResult, tablesResult] = await Promise.all([
     supabase.from('profiles').select('*, restaurants(*)').single(),
     supabase
       .from('reservations')
@@ -22,11 +22,13 @@ export default async function DashboardPage() {
       .eq('reservation_date', today)
       .order('reservation_time', { ascending: true }),
     supabase.from('notices').select('*').order('created_at', { ascending: false }).limit(10),
+    supabase.from('restaurant_tables').select('*', { count: 'exact', head: true }).eq('is_active', true),
   ])
 
   const profile = profileResult.data
   const reservations: Reservation[] = reservationsResult.data ?? []
   const notices: Notice[] = noticesResult.data ?? []
+  const totalTables = tablesResult.count ?? 0
 
   const staffName = profile?.full_name ?? 'Staff'
 
@@ -51,6 +53,7 @@ export default async function DashboardPage() {
       staffName={staffName}
       greeting={greeting}
       dateLabel={dateLabel}
+      totalTables={totalTables}
     />
   )
 }
