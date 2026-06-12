@@ -10,8 +10,10 @@ export default async function SettingsPage() {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('restaurant_id')
+    .select('restaurant_id, role')
     .single()
+
+  if (profile?.role === 'staff') redirect('/dashboard')
 
   const { data: restaurant } = await supabase
     .from('restaurants')

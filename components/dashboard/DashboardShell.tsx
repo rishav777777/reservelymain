@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { UserRole } from '@/types'
 import { LayoutDashboard, Table2, Settings, LogOut } from 'lucide-react'
 
 const NAV_ITEMS = [
@@ -11,7 +12,7 @@ const NAV_ITEMS = [
   { href: '/dashboard/settings', label: 'Settings',  icon: Settings },
 ]
 
-export function DashboardShell({ children }: { children: React.ReactNode }) {
+export function DashboardShell({ children, userRole }: { children: React.ReactNode; userRole: UserRole }) {
   const pathname = usePathname()
   const router = useRouter()
 
@@ -38,7 +39,11 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
 
         {/* Nav */}
         <nav className="flex-1 px-2 py-4 space-y-0.5">
-          {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
+          {NAV_ITEMS.filter((item) => {
+            if (item.href === '/dashboard/settings') return userRole !== 'staff'
+            if (item.href === '/dashboard/analytics') return userRole !== 'staff'
+            return true
+          }).map(({ href, label, icon: Icon }) => {
             const active = pathname === href
             return (
               <Link

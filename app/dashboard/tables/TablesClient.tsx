@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { RestaurantTable } from '@/types'
+import { RestaurantTable, UserRole } from '@/types'
 import { createClient } from '@/lib/supabase/client'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
@@ -16,9 +16,11 @@ const CATEGORIES = ['Indoor', 'Outdoor', 'VIP', 'Bar']
 interface TablesClientProps {
   tables: RestaurantTable[]
   restaurantId: string
+  userRole: UserRole
 }
 
-export function TablesClient({ tables: initial, restaurantId }: TablesClientProps) {
+export function TablesClient({ tables: initial, restaurantId, userRole }: TablesClientProps) {
+  const canManage = userRole !== 'staff'
   const [tables, setTables] = useState(initial)
   const [addOpen, setAddOpen] = useState(false)
   const [name, setName] = useState('')
@@ -74,12 +76,14 @@ export function TablesClient({ tables: initial, restaurantId }: TablesClientProp
           <h1 className="text-sm font-semibold text-gray-900">Tables</h1>
           <p className="text-xs text-gray-400 mt-0.5">{tables.length} tables configured</p>
         </div>
-        <button
-          onClick={() => setAddOpen(true)}
-          className="flex items-center gap-1.5 bg-[#E63946] hover:bg-[#c1121f] text-white text-xs font-medium px-3 py-1.5 rounded-md transition-colors"
-        >
-          <Plus size={12} /> Add Table
-        </button>
+        {canManage && (
+          <button
+            onClick={() => setAddOpen(true)}
+            className="flex items-center gap-1.5 bg-brand-primary hover:bg-brand-primary/90 text-white text-xs font-medium px-3 py-1.5 rounded-md transition-colors"
+          >
+            <Plus size={12} /> Add Table
+          </button>
+        )}
       </div>
 
       <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
@@ -111,12 +115,14 @@ export function TablesClient({ tables: initial, restaurantId }: TablesClientProp
                   </span>
                 </td>
                 <td className="px-4 py-3 text-right">
-                  <button
-                    onClick={() => handleToggle(t)}
-                    className="text-gray-400 hover:text-gray-700 underline-offset-2 hover:underline transition-colors"
-                  >
-                    {t.is_active ? 'Deactivate' : 'Activate'}
-                  </button>
+                  {canManage && (
+                    <button
+                      onClick={() => handleToggle(t)}
+                      className="text-gray-400 hover:text-gray-700 underline-offset-2 hover:underline transition-colors"
+                    >
+                      {t.is_active ? 'Deactivate' : 'Activate'}
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}
