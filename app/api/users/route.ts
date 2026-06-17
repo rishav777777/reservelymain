@@ -1,6 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
+import { resourceLimiter } from '@/lib/ratelimit'
+import { logAction } from '@/lib/audit'
 
 export async function POST(request: NextRequest) {
   try {
@@ -12,6 +14,24 @@ export async function POST(request: NextRequest) {
       .from('profiles').select('restaurant_id, role').eq('id', user.id).single()
     if (!profile || profile.role !== 'owner') {
       return NextResponse.json({ error: 'Only owners can create users' }, { status: 403 })
+    }
+
+    try {
+      const { success, limit, remaining } = await resourceLimiter.limit(user.id)
+      if (!success) {
+        return NextResponse.json(
+          { error: 'Too many user creation requests. Please try again later.' },
+          {
+            status: 429,
+            headers: {
+              'X-RateLimit-Limit':     String(limit),
+              'X-RateLimit-Remaining': String(remaining),
+            },
+          }
+        )
+      }
+    } catch {
+      console.warn('[ratelimit] Redis unavailable, skipping rate limit check')
     }
 
     const { name, email, password, role } = await request.json()
@@ -47,6 +67,15 @@ export async function POST(request: NextRequest) {
       .eq('id', newUser.user.id)
 
     if (profileError) return NextResponse.json({ error: profileError.message }, { status: 500 })
+
+    logAction({
+      restaurant_id: profile.restaurant_id,
+      actor_id:      user.id,
+      action:        'user.created',
+      target_type:   'user',
+      target_id:     newUser.user.id,
+      metadata: { email, role: role ?? 'staff' },
+    }).catch(() => {})
 
     return NextResponse.json({
       id: newUser.user.id,

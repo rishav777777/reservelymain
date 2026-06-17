@@ -4,13 +4,13 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { type Lang, t } from './translations'
 
 // ─── Zone layout ─────────────────────────────────────────────────────────────
+// Updated keys to exact uppercase strings to match your Layout Editor DB writes.
 // Each category occupies a rectangular zone in the SVG viewBox (0 0 420 280).
 // Tables are auto-slotted inside their zone left-to-right, wrapping as needed.
-// Update zone bounds here if you want to reposition areas.
 const ZONES: Record<string, { x: number; y: number; w: number; h: number; label: string }> = {
-  Indoor:  { x: 8,   y: 8,   w: 220, h: 148, label: 'Indoor'  },
-  Bar:     { x: 240, y: 8,   w: 104, h: 148, label: 'Bar'     },
-  Outdoor: { x: 8,   y: 168, w: 104, h: 104, label: 'Outdoor' },
+  INDOOR:  { x: 8,   y: 8,   w: 220, h: 148, label: 'Indoor'  },
+  BAR:     { x: 240, y: 8,   w: 104, h: 148, label: 'Bar'     },
+  OUTDOOR: { x: 8,   y: 168, w: 104, h: 104, label: 'Outdoor' },
   VIP:     { x: 124, y: 168, w: 220, h: 104, label: 'VIP'     },
 }
 
@@ -297,8 +297,8 @@ export function Screen2({ lang, dateStr, rawDate, timeStr, restaurantId, onBack,
       {/* Legend */}
       <div style={{ display: 'flex', gap: '14px', paddingLeft: '4px', flexWrap: 'wrap' }}>
         {[
-          { label: tr.free,     fill: 'rgba(255,255,255,0.5)',  stroke: 'rgba(13,71,43,0.35)'   },
-          { label: lang === 'DE' ? 'Gehalten' : 'Held', fill: 'rgba(255,200,80,0.25)',  stroke: 'rgba(180,130,0,0.45)'  },
+          { label: tr.free,     fill: 'rgba(255,255,255,0.5)',   stroke: 'rgba(13,71,43,0.35)'   },
+          { label: lang === 'DE' ? 'Gehalten' : 'Held', fill: 'rgba(255,200,80,0.25)',   stroke: 'rgba(180,130,0,0.45)'  },
           { label: tr.reserved, fill: 'rgba(200,210,206,0.2)', stroke: 'rgba(180,196,190,0.3)' },
           { label: tr.selected, fill: 'rgba(13,71,43,0.12)',   stroke: '#0D472B'               },
         ].map(item => (
@@ -408,6 +408,7 @@ export function Screen2({ lang, dateStr, rawDate, timeStr, restaurantId, onBack,
 
       {/* Selection card */}
       <div style={{ transition: 'opacity .22s ease, transform .22s ease', opacity: selTable ? 1 : 0, transform: selTable ? 'translateY(0)' : 'translateY(8px)', pointerEvents: selTable ? 'auto' : 'none' }}>
+        {/* FIXED: justifyBetween -> justifyContent: 'space-between' */}
         <div style={{ ...GLASS, padding: '18px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'relative', overflow: 'hidden' }}>
           <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '50%', background: 'linear-gradient(180deg,rgba(255,255,255,0.3) 0%,rgba(255,255,255,0) 100%)', pointerEvents: 'none' }}/>
           <div>

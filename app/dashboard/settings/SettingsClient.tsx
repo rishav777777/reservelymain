@@ -114,6 +114,30 @@ export function SettingsClient({ restaurant }: SettingsClientProps) {
           {saving ? 'Saving...' : 'Save Changes'}
         </Button>
       </form>
+
+      {/* Data & Privacy */}
+      <div className="pt-6 border-t border-zinc-200">
+        <p className="text-xs font-semibold text-zinc-700 mb-1">Data & Privacy</p>
+        <p className="text-xs text-zinc-400 mb-3">
+          Download a complete export of your restaurant data including all reservations,
+          tables, and staff. Required by GDPR Art. 15 (right of access).
+        </p>
+        <a
+          href="/api/export"
+          download
+          className="inline-flex items-center gap-1.5 text-xs font-medium text-zinc-700
+                     border border-zinc-300 rounded-md px-3 py-1.5 hover:bg-zinc-50
+                     transition-colors duration-150"
+        >
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none"
+               xmlns="http://www.w3.org/2000/svg">
+            <path d="M6 1v7M3.5 5.5L6 8l2.5-2.5M2 10h8"
+                  stroke="currentColor" strokeWidth="1.5"
+                  strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+          Download data export
+        </a>
+      </div>
     </div>
   )
 }

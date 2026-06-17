@@ -67,6 +67,7 @@ export interface Reservation {
   menu_preference: string | null
   notes: string | null
   is_walk_in: boolean
+  guest_consented: boolean
   created_at: string
   updated_at: string
   restaurant_tables?: RestaurantTable | null

@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { UserRole } from '@/types'
-import { LayoutDashboard, Table2, Settings, BarChart3, LogOut, Users, Inbox, CalendarDays, Move } from 'lucide-react'
+import { LayoutDashboard, Table2, Settings, BarChart3, LogOut, Users, Inbox, CalendarDays, Move, ScrollText } from 'lucide-react'
 
 const NAV_ITEMS = [
   { href: '/dashboard',                  label: 'Dashboard',    icon: LayoutDashboard },
@@ -15,6 +15,7 @@ const NAV_ITEMS = [
   { href: '/dashboard/settings',         label: 'Settings',     icon: Settings },
   { href: '/dashboard/staff',            label: 'Users',        icon: Users },
   { href: '/dashboard/requests',         label: 'Requests',     icon: Inbox },
+  { href: '/dashboard/audit',      label: 'Audit log', icon: ScrollText },
 ]
 
 export function DashboardShell({ children, userRole }: { children: React.ReactNode; userRole: UserRole }) {
@@ -50,6 +51,7 @@ export function DashboardShell({ children, userRole }: { children: React.ReactNo
             if (item.href === '/dashboard/analytics')     return userRole !== 'staff'
             if (item.href === '/dashboard/staff')         return userRole === 'owner'
             if (item.href === '/dashboard/requests')      return userRole === 'owner'
+	    if (item.href === '/dashboard/audit')     return userRole === 'owner'
             return true
           }).map(({ href, label, icon: Icon }) => {
             const active = pathname === href || pathname.startsWith(href + '/')

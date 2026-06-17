@@ -1,9 +1,29 @@
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { Resend } from 'resend'
 import { NextRequest, NextResponse } from 'next/server'
+import { demoRequestLimiter, getClientIp } from '@/lib/ratelimit'
 
 export async function POST(request: NextRequest) {
   try {
+    const ip = getClientIp(request)
+    try {
+      const { success, limit, remaining } = await demoRequestLimiter.limit(ip)
+      if (!success) {
+        return NextResponse.json(
+          { error: 'Too many requests. Please try again later.' },
+          {
+            status: 429,
+            headers: {
+              'X-RateLimit-Limit':     String(limit),
+              'X-RateLimit-Remaining': String(remaining),
+            },
+          }
+        )
+      }
+    } catch {
+      console.warn('[ratelimit] Redis unavailable, skipping rate limit check')
+    }
+
     const body = await request.json()
     const { restaurantName, contactName, email, phone, city, venueType, message } = body
 
