@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
+import { createClient } from '@/lib/supabase/client'
 import { Plus, Trash2, Save, Layers } from 'lucide-react'
 
 interface Zone {
@@ -56,6 +57,53 @@ export default function LayoutEditorPage() {
   const [dragItem, setDragItem] = useState<{ type: 'zone' | 'table'; id: string } | null>(null)
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
   const canvasRef = useRef<SVGSVGElement | null>(null)
+
+  const [loading,  setLoading]  = useState(true)
+  const [saving,   setSaving]   = useState(false)
+  const [saveMsg,  setSaveMsg]  = useState<string | null>(null)
+
+  useEffect(() => {
+    async function loadLayout() {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) { setLoading(false); return }
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('restaurant_id')
+        .eq('id', user.id)
+        .single()
+
+      if (!profile?.restaurant_id) { setLoading(false); return }
+
+      const res = await fetch(`/api/layout?restaurantId=${profile.restaurant_id}`)
+      if (!res.ok) { setLoading(false); return }
+
+      const data = await res.json()
+
+      if (data.zones?.length > 0) {
+        setZones(data.zones.map((z: any) => ({
+          id:    z.id,
+          label: z.label,
+          x: z.x, y: z.y, w: z.w, h: z.h,
+        })))
+      }
+
+      if (data.tables?.length > 0) {
+        setTables(data.tables.map((t: any) => ({
+          id:       t.id,
+          name:     t.name,
+          capacity: t.capacity,
+          category: t.category,
+          x: t.x ?? 60, y: t.y ?? 60,
+          w: t.w ?? 58,  h: t.h ?? 44,
+        })))
+      }
+
+      setLoading(false)
+    }
+    loadLayout()
+  }, [])
 
   const handleAddZone = () => {
     if (!newZoneLabel.trim()) return
@@ -124,11 +172,29 @@ export default function LayoutEditorPage() {
           <h1 className="text-2xl font-serif text-zinc-900 font-medium tracking-tight">Interactive Layout Workspace</h1>
           <p className="text-xs text-zinc-500 mt-1">Design sections, customize boundaries freely, and drag elements on the grid.</p>
         </div>
-        <button 
-          onClick={() => alert('Layout settings blueprint updated successfully!')}
+        <button
+          onClick={async () => {
+            setSaving(true)
+            setSaveMsg(null)
+            try {
+              const res = await fetch('/api/layout', {
+                method:  'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body:    JSON.stringify({ zones, tables }),
+              })
+              const body = await res.json()
+              if (!res.ok) { setSaveMsg(`Error: ${body.error}`); return }
+              setSaveMsg('Saved successfully')
+              setTimeout(() => setSaveMsg(null), 3000)
+            } catch {
+              setSaveMsg('Save failed')
+            } finally {
+              setSaving(false)
+            }
+          }}
           className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold bg-emerald-950 text-white shadow-md hover:bg-emerald-900 transition-all"
         >
-          <Save size={14} /> Save Configurations
+          <Save size={14} /> {saving ? 'Saving…' : saveMsg ?? 'Save Configurations'}
         </button>
       </div>
 
@@ -168,7 +234,11 @@ export default function LayoutEditorPage() {
                 type="number" 
                 min={1} 
                 value={newTableCap} 
-                onChange={e => setNewTableCap(parseInt(e.target.value) || 2)}
+                onChange={e => {
+                  const val = e.target.value
+                  setNewTableCap(val === '' ? 0 : parseInt(val))
+                }}
+                onBlur={() => { if (!newTableCap || newTableCap < 1) setNewTableCap(1) }}
                 className="w-full bg-white/70 border border-zinc-200 rounded-xl px-3 py-1.5 text-xs focus:outline-none"
               />
               <button type="submit" className="w-full py-2 bg-zinc-900 text-white rounded-xl text-xs font-medium flex items-center justify-center gap-1.5 hover:bg-zinc-800 transition">
@@ -194,6 +264,13 @@ export default function LayoutEditorPage() {
         </div>
 
         <div className="xl:col-span-3 flex flex-col items-center">
+          {loading ? (
+            <div style={{ width: canvasWidth, height: canvasHeight, display: 'flex',
+              alignItems: 'center', justifyContent: 'center',
+              background: '#f9fafb', border: '1px solid #e4e7eb', borderRadius: 16 }}>
+              <p className="text-xs text-zinc-400">Loading layout…</p>
+            </div>
+          ) : (
           <svg
             ref={canvasRef}
             width={canvasWidth}
@@ -247,6 +324,7 @@ export default function LayoutEditorPage() {
               )
             })}
           </svg>
+          )}
         </div>
       </div>
     </div>

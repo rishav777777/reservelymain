@@ -4,40 +4,12 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { type Lang, t } from './translations'
 
 // ─── Zone layout ─────────────────────────────────────────────────────────────
-// Updated keys to exact uppercase strings to match your Layout Editor DB writes.
-// Each category occupies a rectangular zone in the SVG viewBox (0 0 420 280).
-// Tables are auto-slotted inside their zone left-to-right, wrapping as needed.
+// Kept for fallback visual rendering lines if layout data lacks bounding boxes
 const ZONES: Record<string, { x: number; y: number; w: number; h: number; label: string }> = {
   INDOOR:  { x: 8,   y: 8,   w: 220, h: 148, label: 'Indoor'  },
   BAR:     { x: 240, y: 8,   w: 104, h: 148, label: 'Bar'     },
   OUTDOOR: { x: 8,   y: 168, w: 104, h: 104, label: 'Outdoor' },
   VIP:     { x: 124, y: 168, w: 220, h: 104, label: 'VIP'     },
-}
-
-// Table card dimensions
-const TW = 58   // table width
-const TH = 44   // table height
-const GAP = 10  // gap between tables
-const PAD = 14  // padding inside zone
-
-// Auto-place tables inside a zone
-function slotTables(
-  tableNames: string[],
-  zone: { x: number; y: number; w: number; h: number }
-): Array<{ name: string; x: number; y: number; w: number; h: number }> {
-  const result = []
-  let col = 0
-  let row = 0
-  const colsPerRow = Math.max(1, Math.floor((zone.w - PAD * 2 + GAP) / (TW + GAP)))
-
-  for (const name of tableNames) {
-    const x = zone.x + PAD + col * (TW + GAP)
-    const y = zone.y + PAD + 18 + row * (TH + GAP)  // 18 = zone label height
-    result.push({ name, x, y, w: TW, h: TH })
-    col++
-    if (col >= colsPerRow) { col = 0; row++ }
-  }
-  return result
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -48,6 +20,9 @@ interface LiveTable {
   category: string
   status: 'free' | 'held' | 'reserved'
   heldBySession: string | null
+  // Support coordinate parameters mapped from your new interactive layout workspace
+  x_position?: number
+  y_position?: number
 }
 
 type PlacedTable = LiveTable & { x: number; y: number; w: number; h: number }
@@ -95,6 +70,7 @@ export function Screen2({ lang, dateStr, rawDate, timeStr, restaurantId, onBack,
   const time      = parseTimeFrom(timeStr)
 
   const [tables,    setTables]    = useState<PlacedTable[]>([])
+  const [zones,     setZones]     = useState<typeof ZONES>(ZONES)
   const [loading,   setLoading]   = useState(true)
   const [error,     setError]     = useState<string | null>(null)
   const [selId,     setSelId]     = useState<string | null>(null)
@@ -108,41 +84,68 @@ export function Screen2({ lang, dateStr, rawDate, timeStr, restaurantId, onBack,
   const countRef  = useRef<ReturnType<typeof setInterval> | null>(null)
   const prevSelId = useRef<string | null>(null)
 
-  // ── Fetch & layout ──────────────────────────────────────────────────────────
+  // ── Fetch custom positions from layout workspace ──────────────────────────
   const fetchTables = useCallback(async () => {
     try {
-      const res = await fetch(
+      // 1. Fetch live availabilities
+      const resAvailability = await fetch(
         `/api/reservations/tables?date=${rawDate}&time=${time}&duration=90&restaurantId=${restaurantId}`
       )
-      if (!res.ok) throw new Error('Failed to load tables')
-      const json: { tables: LiveTable[] } = await res.json()
+      if (!resAvailability.ok) throw new Error('Failed to load table metrics')
+      const availabilityJson: { tables: LiveTable[] } = await resAvailability.json()
 
-      // Group by category, sort by name within each group
-      const byCategory: Record<string, LiveTable[]> = {}
-      for (const tb of json.tables) {
-        if (!byCategory[tb.category]) byCategory[tb.category] = []
-        byCategory[tb.category].push(tb)
-      }
-      for (const cat of Object.keys(byCategory)) {
-        byCategory[cat].sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }))
-      }
+      // 2. Fetch zones + table positions from layout
+      const resLayout = await fetch(`/api/layout?restaurantId=${restaurantId}`)
+      let layoutPositions: Record<string, { x: number; y: number }> = {}
+      let apiZones: typeof ZONES = {}
 
-      // Auto-slot into zones
-      const placed: PlacedTable[] = []
-      for (const [cat, zone] of Object.entries(ZONES)) {
-        const liveTables = byCategory[cat] ?? []
-        const slots = slotTables(liveTables.map(t => t.name), zone)
-        for (let i = 0; i < liveTables.length; i++) {
-          const live = liveTables[i]
-          const slot = slots[i]
-          if (!slot) continue
-          // A hold owned by THIS session looks free to us
-          const effectiveStatus =
-            live.status === 'held' && live.heldBySession === sessionId.current
-              ? 'free' : live.status
-          placed.push({ ...live, ...slot, status: effectiveStatus })
+      if (resLayout.ok) {
+        const layoutJson = await resLayout.json()
+
+        if (Array.isArray(layoutJson.tables)) {
+          layoutJson.tables.forEach((item: any) => {
+            if (item.id) layoutPositions[item.id] = { x: item.x, y: item.y }
+          })
+        }
+
+        if (Array.isArray(layoutJson.zones) && layoutJson.zones.length > 0) {
+          apiZones = {}
+          layoutJson.zones.forEach((z: any) => {
+            apiZones[z.label.toUpperCase()] = {
+              x: z.x, y: z.y, w: z.w, h: z.h, label: z.label
+            }
+          })
         }
       }
+
+      setZones(Object.keys(apiZones).length > 0 ? apiZones : ZONES)
+
+      // 3. Merge live statuses with custom positions from your new workspace workspace
+      const placed: PlacedTable[] = availabilityJson.tables.map((live) => {
+        const effectiveStatus =
+          live.status === 'held' && live.heldBySession === sessionId.current
+            ? 'free' : live.status
+
+        // Match custom coordinates saved from the custom designer workspace workspace
+        const savedPos = layoutPositions[live.id] || { 
+          x: live.x_position, 
+          y: live.y_position 
+        }
+
+        // Fallback strategy if table coordinates haven't been configured via workspace drag-and-drop yet
+        const fallbackZone = ZONES[live.category.toUpperCase()] || ZONES.INDOOR
+        const x = savedPos.x !== undefined ? savedPos.x : (fallbackZone.x + 20)
+        const y = savedPos.y !== undefined ? savedPos.y : (fallbackZone.y + 30)
+
+        return {
+          ...live,
+          x,
+          y,
+          w: 58, // Standard layout box width
+          h: 44, // Standard layout box height
+          status: effectiveStatus,
+        }
+      })
 
       setTables(placed)
       setError(null)
@@ -198,13 +201,11 @@ export function Screen2({ lang, dateStr, rawDate, timeStr, restaurantId, onBack,
     setHolding(true)
     setHoldErr(null)
 
-    // Release previous hold if switching
     if (prevSelId.current && prevSelId.current !== table.id) {
       await releaseHold(prevSelId.current)
       prevSelId.current = null
     }
 
-    // Deselect same table
     if (selId === table.id) {
       await releaseHold(table.id)
       setSelId(null); prevSelId.current = null; setHeldUntil(null)
@@ -223,11 +224,9 @@ export function Screen2({ lang, dateStr, rawDate, timeStr, restaurantId, onBack,
     setSelId(table.id)
     prevSelId.current = table.id
 
-    // Heartbeat
     if (renewRef.current) clearInterval(renewRef.current)
     renewRef.current = setInterval(() => placeHold(table.id), HOLD_RENEW_MS)
 
-    // Countdown
     if (countRef.current) clearInterval(countRef.current)
     setCountdown(HOLD_SECS)
     countRef.current = setInterval(() => {
@@ -309,7 +308,7 @@ export function Screen2({ lang, dateStr, rawDate, timeStr, restaurantId, onBack,
         ))}
       </div>
 
-      {/* Floor plan */}
+      {/* Floor plan viewport */}
       <div style={{ ...GLASS, padding: '20px', position: 'relative', overflow: 'hidden' }}>
         <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '44px', background: 'linear-gradient(180deg,rgba(255,255,255,0.35) 0%,rgba(255,255,255,0) 100%)', borderRadius: '28px 28px 0 0', pointerEvents: 'none' }}/>
 
@@ -331,7 +330,7 @@ export function Screen2({ lang, dateStr, rawDate, timeStr, restaurantId, onBack,
               <filter id="tbl-sel"><feGaussianBlur stdDeviation="5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
             </defs>
 
-            {/* Outer room */}
+            {/* Canvas boundaries */}
             <rect x="2" y="2" width="416" height="276" rx="16"
               fill="rgba(255,255,255,0.08)" stroke="rgba(13,71,43,0.07)"
               strokeWidth="1.5" strokeDasharray="6 5"/>
@@ -344,19 +343,19 @@ export function Screen2({ lang, dateStr, rawDate, timeStr, restaurantId, onBack,
               {tr.entrance}
             </text>
 
-            {/* Zone backgrounds */}
-            {Object.entries(ZONES).map(([cat, zone]) => (
+            {/* Zones overlay */}
+            {Object.entries(zones).map(([cat, zone]) => (
               <g key={cat}>
                 <rect x={zone.x} y={zone.y} width={zone.w} height={zone.h} rx="10"
-                  fill="rgba(255,255,255,0.10)" stroke="rgba(13,71,43,0.08)" strokeWidth="1" strokeDasharray="4 4"/>
+                  fill="rgba(255,255,255,0.03)" stroke="rgba(13,71,43,0.05)" strokeWidth="1" strokeDasharray="4 4"/>
                 <text x={zone.x + 10} y={zone.y + 13}
-                  style={{ fontFamily: "'DM Sans',sans-serif", fontSize: '8px', fontWeight: 700, fill: 'rgba(13,71,43,0.4)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                  style={{ fontFamily: "'DM Sans',sans-serif", fontSize: '8px', fontWeight: 700, fill: 'rgba(13,71,43,0.25)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
                   {zone.label}
                 </text>
               </g>
             ))}
 
-            {/* Tables */}
+            {/* Custom Workspace Rendered Tables */}
             {tables.map(tb => {
               const isSel      = tb.id === selId
               const isReserved = tb.status === 'reserved'
@@ -385,16 +384,13 @@ export function Screen2({ lang, dateStr, rawDate, timeStr, restaurantId, onBack,
                     className={isSel ? 'tbl-pulse' : ''}
                     style={{ transition: 'fill .2s, stroke .2s' }}
                   />
-                  {/* Held indicator */}
                   {isHeld && (
                     <circle cx={tb.x + tb.w - 7} cy={tb.y + 7} r="4" fill="rgba(190,130,0,0.85)"/>
                   )}
-                  {/* Table name */}
                   <text x={tb.x + tb.w / 2} y={tb.y + tb.h / 2 - 5} textAnchor="middle"
                     style={{ fontFamily: "'DM Sans',sans-serif", fontSize: '10px', fontWeight: 700, fill: txtCol, userSelect: 'none' }}>
                     {tb.name}
                   </text>
-                  {/* Capacity */}
                   <text x={tb.x + tb.w / 2} y={tb.y + tb.h / 2 + 8} textAnchor="middle"
                     style={{ fontFamily: "'DM Sans',sans-serif", fontSize: '8px', fill: isReserved || isHeld ? 'rgba(120,140,136,0.45)' : '#6A7A76', userSelect: 'none' }}>
                     {tb.capacity}P
@@ -406,9 +402,8 @@ export function Screen2({ lang, dateStr, rawDate, timeStr, restaurantId, onBack,
         )}
       </div>
 
-      {/* Selection card */}
+      {/* Selected Action Card */}
       <div style={{ transition: 'opacity .22s ease, transform .22s ease', opacity: selTable ? 1 : 0, transform: selTable ? 'translateY(0)' : 'translateY(8px)', pointerEvents: selTable ? 'auto' : 'none' }}>
-        {/* FIXED: justifyBetween -> justifyContent: 'space-between' */}
         <div style={{ ...GLASS, padding: '18px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'relative', overflow: 'hidden' }}>
           <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '50%', background: 'linear-gradient(180deg,rgba(255,255,255,0.3) 0%,rgba(255,255,255,0) 100%)', pointerEvents: 'none' }}/>
           <div>
