@@ -11,6 +11,14 @@ export type ReservationStatus =
 
 export type SenderType = 'guest' | 'restaurant'
 
+export interface StaffMember {
+  id: string
+  full_name: string | null
+  email: string | null
+  role: UserRole
+  is_active: boolean
+}
+
 export interface Restaurant {
   id: string
   name: string
@@ -36,6 +44,8 @@ export interface RestaurantTable {
   capacity: number
   category: string
   is_active: boolean
+  image_url: string | null
+  image_urls: string[]
   created_at: string
 }
 
@@ -50,6 +60,7 @@ export interface Reservation {
   party_size: number
   reservation_date: string
   reservation_time: string
+  duration_minutes: number
   category: string | null
   status: ReservationStatus
   special_requests: string | null

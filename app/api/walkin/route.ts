@@ -1,10 +1,10 @@
 import { createClient } from '@/lib/supabase/server'
-import { allocateTable, isWithinWindow } from '@/lib/table-allocator'
+import { allocateTable, getOverlappingTableIds } from '@/lib/table-allocator'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function POST(request: NextRequest) {
   const body = await request.json()
-  const { party_size, category } = body as { party_size: number; category: string }
+  const { party_size, category, duration_minutes = 60 } = body as { party_size: number; category: string; duration_minutes?: number }
 
   if (!party_size || party_size < 1) {
     return NextResponse.json({ error: 'Invalid party size' }, { status: 400 })
@@ -31,25 +31,16 @@ export async function POST(request: NextRequest) {
     .eq('restaurant_id', restaurantId)
     .eq('is_active', true)
 
-  // Only block tables that are physically occupied right now:
-  // - status 'arrived' (guests are seated, regardless of time)
-  // - status 'confirmed' within a 2-hour window of the current time
-  const { data: todayBooked } = await supabase
+  const { data: existing } = await supabase
     .from('reservations')
-    .select('table_id, reservation_time, status')
+    .select('table_id, reservation_time, duration_minutes')
     .eq('restaurant_id', restaurantId)
     .eq('reservation_date', today)
     .in('status', ['confirmed', 'arrived'])
 
-  const bookedIds = (todayBooked ?? [])
-    .filter((r) => {
-      if (r.status === 'arrived') return true
-      return isWithinWindow(nowTime, r.reservation_time, 120)
-    })
-    .map((r) => r.table_id)
-    .filter(Boolean) as string[]
+  const occupiedIds = getOverlappingTableIds(existing ?? [], nowTime, duration_minutes)
 
-  const allocated = allocateTable(allTables ?? [], party_size, category ?? null, bookedIds)
+  const allocated = allocateTable(allTables ?? [], party_size, category ?? null, occupiedIds)
 
   if (!allocated) {
     return NextResponse.json(
@@ -72,6 +63,7 @@ export async function POST(request: NextRequest) {
       reservation_date: today,
       reservation_time: nowTime,
       category,
+      duration_minutes,
       status: 'confirmed',
       is_walk_in: true,
     })

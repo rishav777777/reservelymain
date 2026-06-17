@@ -10,12 +10,14 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 
 export default function LoginPage() {
   const router = useRouter()
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [error, setError] = useState<string | null>(null)
-  const [loading, setLoading] = useState(false)
+  const [email, setEmail]           = useState('')
+  const [password, setPassword]     = useState('')
+  const [error, setError]           = useState<string | null>(null)
+  const [loading, setLoading]       = useState(false)
+  const [resetSent, setResetSent]   = useState(false)
+  const [resetLoading, setResetLoading] = useState(false)
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSignIn(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
     setLoading(true)
@@ -33,11 +35,31 @@ export default function LoginPage() {
     router.refresh()
   }
 
+  async function handleForgotPassword() {
+    if (!email.trim()) {
+      setError('Enter your email address first, then click Forgot password')
+      return
+    }
+    setResetLoading(true)
+    setError(null)
+    const supabase = createClient()
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    })
+    if (error) {
+      setError(error.message)
+      setResetLoading(false)
+      return
+    }
+    setResetSent(true)
+    setResetLoading(false)
+  }
+
   return (
     <Card className="w-full max-w-sm shadow-sm border border-gray-200">
       <CardHeader className="space-y-1 pb-4">
         <div className="flex items-center gap-2 mb-2">
-          <div className="w-7 h-7 rounded-md bg-[#E63946] flex items-center justify-center">
+          <div className="w-7 h-7 rounded-md bg-brand-primary flex items-center justify-center">
             <span className="text-white text-xs font-bold">R</span>
           </div>
           <span className="font-semibold text-gray-900 text-sm">Reservely</span>
@@ -48,7 +70,7 @@ export default function LoginPage() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-3">
+        <form onSubmit={handleSignIn} className="space-y-3">
           <div className="space-y-1">
             <Label htmlFor="email" className="text-xs font-medium text-gray-700">Email</Label>
             <Input
@@ -82,17 +104,28 @@ export default function LoginPage() {
 
           <Button
             type="submit"
-            className="w-full h-8 text-sm bg-[#E63946] hover:bg-[#c1121f] text-white"
+            className="w-full h-8 text-sm bg-brand-primary hover:bg-brand-primary/90 text-white"
             disabled={loading}
           >
             {loading ? 'Signing in...' : 'Sign in'}
           </Button>
 
-          <p className="text-center text-xs text-gray-400 pt-1">
-            <button type="button" className="hover:text-gray-600 transition-colors">
-              Forgot password?
-            </button>
-          </p>
+          <div className="text-center pt-1">
+            {resetSent ? (
+              <p className="text-xs text-emerald-600">
+                Reset link sent — check your email
+              </p>
+            ) : (
+              <button
+                type="button"
+                onClick={handleForgotPassword}
+                disabled={resetLoading}
+                className="text-xs text-zinc-400 hover:text-zinc-600 transition-colors"
+              >
+                {resetLoading ? 'Sending...' : 'Forgot password?'}
+              </button>
+            )}
+          </div>
         </form>
       </CardContent>
     </Card>

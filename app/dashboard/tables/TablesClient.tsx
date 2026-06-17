@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Button } from '@/components/ui/button'
 import { Plus } from 'lucide-react'
 import { toast } from 'sonner'
+import { TableDetailPanel } from '@/components/dashboard/tables/TableDetailPanel'
 
 const CATEGORIES = ['Indoor', 'Outdoor', 'VIP', 'Bar']
 
@@ -22,11 +23,43 @@ interface TablesClientProps {
 export function TablesClient({ tables: initial, restaurantId, userRole }: TablesClientProps) {
   const canManage = userRole !== 'staff'
   const [tables, setTables] = useState(initial)
+  const [selectedTable, setSelectedTable] = useState<RestaurantTable | null>(null)
+  const [panelOpen, setPanelOpen] = useState(false)
+
+  const grouped = tables.reduce<Record<string, RestaurantTable[]>>((acc, table) => {
+    if (!acc[table.category]) acc[table.category] = []
+    acc[table.category].push(table)
+    return acc
+  }, {})
+  const sortedCategories = Object.keys(grouped).sort()
+  const areaStats = (ts: RestaurantTable[]) => ({
+    total:    ts.length,
+    active:   ts.filter((t) => t.is_active).length,
+    capacity: ts.reduce((sum, t) => sum + t.capacity, 0),
+  })
   const [addOpen, setAddOpen] = useState(false)
   const [name, setName] = useState('')
   const [capacity, setCapacity] = useState(2)
   const [category, setCategory] = useState('Indoor')
   const [saving, setSaving] = useState(false)
+
+  function openPanel(table: RestaurantTable) {
+    setSelectedTable(table)
+    setPanelOpen(true)
+  }
+
+  function handleTableUpdated(updated: RestaurantTable) {
+    setTables((prev) => prev.map((t) => (t.id === updated.id ? updated : t)))
+    setSelectedTable(updated)
+  }
+
+  function handleTableDeleted(tableId: string) {
+    setTables((prev) => prev.filter((t) => t.id !== tableId))
+    if (selectedTable?.id === tableId) {
+      setPanelOpen(false)
+      setSelectedTable(null)
+    }
+  }
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault()
@@ -86,48 +119,42 @@ export function TablesClient({ tables: initial, restaurantId, userRole }: Tables
         )}
       </div>
 
-      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-        <table className="w-full text-xs">
-          <thead>
-            <tr className="border-b border-gray-200 bg-gray-50">
-              <th className="text-left px-4 py-2.5 font-medium text-gray-600">Name</th>
-              <th className="text-left px-4 py-2.5 font-medium text-gray-600">Capacity</th>
-              <th className="text-left px-4 py-2.5 font-medium text-gray-600">Category</th>
-              <th className="text-left px-4 py-2.5 font-medium text-gray-600">Status</th>
-              <th className="text-right px-4 py-2.5 font-medium text-gray-600">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {tables.map((t) => (
-              <tr key={t.id} className="border-b border-gray-100 last:border-0 hover:bg-gray-50">
-                <td className="px-4 py-3 font-medium text-gray-900">{t.name}</td>
-                <td className="px-4 py-3 text-gray-600">{t.capacity} guests</td>
-                <td className="px-4 py-3 text-gray-600">{t.category}</td>
-                <td className="px-4 py-3">
-                  <span
-                    className={`px-2 py-0.5 rounded-full font-medium ${
-                      t.is_active
-                        ? 'bg-emerald-100 text-emerald-700'
-                        : 'bg-gray-100 text-gray-500'
-                    }`}
-                  >
-                    {t.is_active ? 'Active' : 'Inactive'}
-                  </span>
-                </td>
-                <td className="px-4 py-3 text-right">
-                  {canManage && (
-                    <button
-                      onClick={() => handleToggle(t)}
-                      className="text-gray-400 hover:text-gray-700 underline-offset-2 hover:underline transition-colors"
-                    >
-                      {t.is_active ? 'Deactivate' : 'Activate'}
-                    </button>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <div>
+        {sortedCategories.map((category) => {
+          const areaTables = grouped[category]
+          const stats = areaStats(areaTables)
+          return (
+            <div key={category} className="mb-6">
+              <div className="flex items-center gap-2 mb-2 px-1">
+                <h3 className="text-xs font-semibold text-zinc-700 uppercase tracking-wider">{category}</h3>
+                <span className="text-xs text-zinc-400">{stats.active}/{stats.total} tables · {stats.capacity} seats</span>
+              </div>
+              <div className="space-y-1.5">
+                {areaTables
+                  .sort((a, b) => a.name.localeCompare(b.name))
+                  .map((t) => (
+                    <div key={t.id} className="flex items-center gap-3 bg-white border border-gray-200 rounded-md px-4 py-3 text-xs hover:bg-gray-50">
+                      <span className="font-medium text-gray-900 w-24 shrink-0">{t.name}</span>
+                      <span className="text-gray-600 w-20 shrink-0">{t.capacity} guests</span>
+                      <span className="flex-1">
+                        <span className={`px-2 py-0.5 rounded-full font-medium ${t.is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>
+                          {t.is_active ? 'Active' : 'Inactive'}
+                        </span>
+                      </span>
+                      {canManage && (
+                        <button
+                          onClick={() => handleToggle(t)}
+                          className="text-gray-400 hover:text-gray-700 underline-offset-2 hover:underline transition-colors shrink-0"
+                        >
+                          {t.is_active ? 'Deactivate' : 'Activate'}
+                        </button>
+                      )}
+                    </div>
+                  ))}
+              </div>
+            </div>
+          )
+        })}
       </div>
 
       <Dialog open={addOpen} onOpenChange={(v) => !v && setAddOpen(false)}>

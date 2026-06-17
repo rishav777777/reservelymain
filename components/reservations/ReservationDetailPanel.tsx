@@ -119,6 +119,11 @@ export function ReservationDetailPanel({
             <p className="flex items-center gap-2 text-xs text-gray-700">
               <Calendar size={12} className="text-gray-400" />
               {dateFormatted} · {timeFormatted}
+              <span className="text-xs text-zinc-500">
+                · {current.duration_minutes >= 60
+                  ? `${current.duration_minutes / 60}h duration`
+                  : `${current.duration_minutes}min duration`}
+              </span>
             </p>
             <p className="flex items-center gap-2 text-xs text-gray-700">
               <Users size={12} className="text-gray-400" />

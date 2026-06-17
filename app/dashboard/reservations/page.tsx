@@ -1,0 +1,272 @@
+'use client'
+
+import { useState, useEffect, useCallback } from 'react'
+import { createClient } from '@/lib/supabase/client'
+import { GlassCalendar, type ReservationSummary } from '@/components/dashboard/GlassCalendar'
+import { DayFeedCard, type Reservation } from '@/components/dashboard/DayFeedCard'
+import { CalendarDays, Leaf } from 'lucide-react'
+
+const now = new Date()
+const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+
+function formatDate(dateStr: string) {
+  const [yr, mo, dy] = dateStr.split('-').map(Number)
+  return new Date(yr, mo - 1, dy).toLocaleDateString('de-AT', {
+    weekday: 'long', day: 'numeric', month: 'long',
+  })
+}
+
+// All statuses the API supports
+type Status = 'pending' | 'confirmed' | 'declined' | 'arrived' | 'no_show' | 'completed' | 'cancelled'
+
+const ACTIVE_STATUSES: Status[] = ['pending', 'confirmed', 'arrived']
+
+export default function ReservationsPage() {
+  const supabase = createClient()
+  const [reservations, setReservations] = useState<Record<string, Reservation[]>>({})
+  const [selectedDate, setSelectedDate] = useState(todayKey)
+  const [loading, setLoading] = useState(true)
+
+  const fetchReservations = useCallback(async () => {
+    const { data, error } = await supabase
+      .from('reservations')
+      .select('*')
+      .order('reservation_time', { ascending: true })
+
+    if (error) { console.error(error); return }
+
+    const grouped: Record<string, Reservation[]> = {}
+    for (const row of data ?? []) {
+      const key = row.reservation_date
+      if (!key) continue
+      if (!grouped[key]) grouped[key] = []
+      grouped[key].push({
+        id:       row.id,
+        name:     row.guest_name,
+        initials: row.guest_name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2),
+        von:      row.reservation_time?.slice(0, 5) ?? '',
+        bis:      row.reservation_time?.slice(0, 5) ?? '',
+        guests:   row.party_size,
+        note:     row.notes ?? row.special_requests ?? undefined,
+        noteIcon: undefined,
+        status:   (row.status ?? 'pending') as Reservation['status'],
+      })
+    }
+    setReservations(grouped)
+    setLoading(false)
+  }, [supabase])
+
+  useEffect(() => { fetchReservations() }, [fetchReservations])
+
+  // Real-time updates via Supabase channel
+  useEffect(() => {
+    const channel = supabase
+      .channel('reservations-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'reservations' }, fetchReservations)
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [supabase, fetchReservations])
+
+  // ── Status transition helper ──────────────────────────────────────────────
+  async function patchStatus(id: string, status: Status) {
+    const res = await fetch(`/api/reservations/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status }),
+    })
+    if (!res.ok) {
+      const err = await res.json()
+      console.error('Status update failed:', err)
+      return false
+    }
+    // Optimistic update
+    setReservations(prev => {
+      const updated = { ...prev }
+      for (const date in updated) {
+        updated[date] = updated[date].map(r =>
+          r.id === id ? { ...r, status: status as Reservation['status'] } : r
+        )
+      }
+      return updated
+    })
+    return true
+  }
+
+  async function handleConfirm(id: string, _reply: string) {
+    await patchStatus(id, 'confirmed')
+  }
+
+  async function handleDecline(id: string, _reply: string) {
+    await patchStatus(id, 'declined')
+  }
+
+  async function handleArrived(id: string) {
+    await patchStatus(id, 'arrived')
+  }
+
+  async function handleNoShow(id: string) {
+    await patchStatus(id, 'no_show')
+  }
+
+  // ── Derived counts ────────────────────────────────────────────────────────
+  const summaries: ReservationSummary[] = Object.entries(reservations).map(([date, list]) => ({
+    date,
+    pending:   list.filter(r => r.status === 'pending').length,
+    confirmed: list.filter(r => r.status === 'confirmed').length,
+  }))
+
+  const dayReservations = reservations[selectedDate] ?? []
+  const pendingCount    = dayReservations.filter(r => r.status === 'pending').length
+  const confirmedCount  = dayReservations.filter(r => r.status === 'confirmed').length
+  const arrivedCount    = dayReservations.filter(r => r.status === 'arrived').length
+  const totalPending    = summaries.reduce((a, s) => a + s.pending, 0)
+  const totalAll        = summaries.reduce((a, s) => a + s.pending + s.confirmed, 0)
+
+  // Split into active (pending → confirmed → arrived) and done (everything else)
+  const activeRes = dayReservations.filter(r => (ACTIVE_STATUSES as string[]).includes(r.status))
+  const doneRes   = dayReservations.filter(r => !(ACTIVE_STATUSES as string[]).includes(r.status))
+
+  // Sort active: pending first, then confirmed, then arrived
+  const statusOrder: Record<string, number> = { pending: 0, confirmed: 1, arrived: 2 }
+  activeRes.sort((a, b) => (statusOrder[a.status] ?? 9) - (statusOrder[b.status] ?? 9))
+
+  return (
+    <div className="flex flex-col flex-1 overflow-hidden" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+
+      {/* Ambient orbs */}
+      <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 0 }}>
+        <div style={{ position: 'absolute', top: '-10%', left: '30%', width: 500, height: 400, borderRadius: '50%', background: 'radial-gradient(ellipse, rgba(255,255,255,0.6) 0%, transparent 70%)', filter: 'blur(60px)' }}/>
+        <div style={{ position: 'absolute', bottom: '5%', right: '10%', width: 380, height: 320, borderRadius: '50%', background: 'radial-gradient(ellipse, rgba(255,255,255,0.45) 0%, transparent 70%)', filter: 'blur(50px)' }}/>
+      </div>
+
+      {/* Header */}
+      <header className="relative flex items-center justify-between px-8 py-4 shrink-0" style={{ zIndex: 20, background: 'rgba(255,255,255,0.55)', backdropFilter: 'blur(32px)', WebkitBackdropFilter: 'blur(32px)', borderBottom: '1px solid rgba(255,255,255,0.85)', boxShadow: '0 1px 0 rgba(28,35,31,0.06), 0 4px 24px rgba(28,35,31,0.05)' }}>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center justify-center rounded-xl" style={{ width: 42, height: 42, background: '#0D472B', boxShadow: '0 2px 10px rgba(13,71,43,0.3)' }}>
+            <Leaf size={18} color="#ffffff" strokeWidth={2}/>
+          </div>
+          <div>
+            <p style={{ fontFamily: "'DM Serif Display', serif", fontSize: 20, fontWeight: 400, color: '#1C231F', letterSpacing: '-0.02em', lineHeight: 1 }}>Der Ledera Wirtshaus</p>
+            <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 11, fontWeight: 500, color: '#8fa393', letterSpacing: '0.12em', textTransform: 'uppercase', marginTop: 2 }}>Reservierungs-Dashboard</p>
+          </div>
+        </div>
+
+        <div className="rounded-xl px-5 py-2 flex items-center gap-2" style={{ background: 'rgba(255,255,255,0.65)', border: '1px solid rgba(255,255,255,0.9)' }}>
+          <CalendarDays size={16} strokeWidth={2} style={{ color: '#1B7A43' }}/>
+          <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 14, fontWeight: 600, color: '#1C231F' }}>
+            {now.toLocaleDateString('de-AT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+          </span>
+        </div>
+
+        <div className="flex items-center gap-3">
+          {totalPending > 0 && (
+            <div className="flex items-center gap-2.5 rounded-xl px-4 py-2" style={{ background: '#0D472B', boxShadow: '0 2px 12px rgba(13,71,43,0.3)' }}>
+              <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#fff', opacity: 0.85 }}/>
+              <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 14, fontWeight: 700, color: '#fff' }}>{totalPending} offen</span>
+            </div>
+          )}
+          <div className="flex items-center gap-2.5 rounded-xl px-4 py-2" style={{ background: 'rgba(27,122,67,0.1)', border: '1px solid rgba(27,122,67,0.2)' }}>
+            <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 14, fontWeight: 600, color: '#1B7A43' }}>{totalAll} gesamt</span>
+          </div>
+        </div>
+      </header>
+
+      {/* Split layout */}
+      <div className="relative flex flex-1" style={{ zIndex: 1, overflow: 'hidden', height: 'calc(100vh - 66px)' }}>
+
+        {/* LEFT: Calendar */}
+        <div className="flex flex-col shrink-0" style={{ width: '45%', overflow: 'hidden', borderRight: '1px solid rgba(28,35,31,0.08)' }}>
+          <div className="flex flex-col flex-1 m-5 rounded-2xl overflow-hidden" style={{ background: 'rgba(255,255,255,0.52)', backdropFilter: 'blur(32px)', WebkitBackdropFilter: 'blur(32px)', border: '1px solid rgba(255,255,255,0.85)', boxShadow: '0 8px 40px rgba(28,35,31,0.1), 0 1px 4px rgba(28,35,31,0.06), inset 0 1px 0 rgba(255,255,255,0.9)' }}>
+            <div className="flex items-center gap-2 px-5 pt-4 pb-0">
+              <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 11, fontWeight: 600, color: '#8fa393', letterSpacing: '0.14em', textTransform: 'uppercase' }}>Monatsübersicht</p>
+            </div>
+            <GlassCalendar summaries={summaries} selectedDate={selectedDate} onSelectDate={setSelectedDate}/>
+          </div>
+        </div>
+
+        {/* RIGHT: Day feed */}
+        <div className="flex flex-col flex-1 overflow-hidden">
+          <div className="px-6 py-4 shrink-0 flex items-end justify-between" style={{ background: 'rgba(255,255,255,0.35)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', borderBottom: '1px solid rgba(28,35,31,0.08)' }}>
+            <div>
+              <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 10, fontWeight: 600, color: '#8fa393', letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: 3 }}>
+                {selectedDate === todayKey ? 'Heute' : 'Ausgewählter Tag'}
+              </p>
+              <h2 style={{ fontFamily: "'DM Serif Display', serif", fontSize: 26, fontWeight: 400, color: '#1C231F', letterSpacing: '-0.02em', lineHeight: 1 }}>
+                {formatDate(selectedDate)}
+              </h2>
+            </div>
+            <div className="flex items-center gap-2">
+              {pendingCount > 0 && (
+                <div className="flex items-center gap-2 rounded-xl px-3.5 py-1.5" style={{ background: '#0D472B', boxShadow: '0 2px 8px rgba(13,71,43,0.25)' }}>
+                  <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 700, color: '#fff' }}>{pendingCount} ausstehend</span>
+                </div>
+              )}
+              {confirmedCount > 0 && (
+                <div className="flex items-center gap-2 rounded-xl px-3.5 py-1.5" style={{ background: 'rgba(27,122,67,0.1)', border: '1px solid rgba(27,122,67,0.2)' }}>
+                  <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 600, color: '#1B7A43' }}>{confirmedCount} bestätigt</span>
+                </div>
+              )}
+              {arrivedCount > 0 && (
+                <div className="flex items-center gap-2 rounded-xl px-3.5 py-1.5" style={{ background: 'rgba(13,71,43,0.12)', border: '1px solid rgba(13,71,43,0.25)' }}>
+                  <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 600, color: '#0D472B' }}>{arrivedCount} da</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Card feed */}
+          <div className="flex-1 overflow-y-auto px-5 py-5" style={{ scrollbarWidth: 'none' }}>
+            {loading ? (
+              <div className="flex items-center justify-center h-40">
+                <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 14, color: '#8fa393' }}>Lädt…</p>
+              </div>
+            ) : dayReservations.length === 0 ? (
+              <div className="flex flex-col items-center justify-center rounded-2xl" style={{ height: '55%', background: 'rgba(255,255,255,0.45)', backdropFilter: 'blur(24px)', border: '1px solid rgba(255,255,255,0.8)', boxShadow: '0 4px 24px rgba(28,35,31,0.07)' }}>
+                <CalendarDays size={40} strokeWidth={1.5} style={{ color: '#c0cfc3', marginBottom: 16 }}/>
+                <p style={{ fontFamily: "'DM Serif Display', serif", fontSize: 22, fontWeight: 400, color: '#8fa393', letterSpacing: '-0.01em' }}>Keine Reservierungen</p>
+                <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 14, color: '#aabcaf', marginTop: 6 }}>Für diesen Tag sind keine Einträge vorhanden</p>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-4">
+                {/* Active: pending → confirmed → arrived */}
+                {activeRes.map(r => (
+                  <DayFeedCard
+                    key={r.id}
+                    reservation={r}
+                    onConfirm={handleConfirm}
+                    onDecline={handleDecline}
+                    onArrived={handleArrived}
+                    onNoShow={handleNoShow}
+                  />
+                ))}
+
+                {/* Divider */}
+                {doneRes.length > 0 && (
+                  <div className="flex items-center gap-3 py-1">
+                    <div style={{ flex: 1, height: 1, background: 'rgba(28,35,31,0.1)' }}/>
+                    <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 10, fontWeight: 600, color: '#8fa393', letterSpacing: '0.14em', textTransform: 'uppercase' }}>Bereits bearbeitet</span>
+                    <div style={{ flex: 1, height: 1, background: 'rgba(28,35,31,0.1)' }}/>
+                  </div>
+                )}
+
+                {/* Done: declined, no_show, completed, cancelled */}
+                {doneRes.map(r => (
+                  <DayFeedCard
+                    key={r.id}
+                    reservation={r}
+                    onConfirm={handleConfirm}
+                    onDecline={handleDecline}
+                    onArrived={handleArrived}
+                    onNoShow={handleNoShow}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <style>{`* { scrollbar-width: none; } *::-webkit-scrollbar { display: none; }`}</style>
+    </div>
+  )
+}

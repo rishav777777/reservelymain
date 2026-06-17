@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Calendar, Zap, MessageSquare, ArrowRight, LayoutDashboard } from 'lucide-react'
+import { Calendar, Zap, MessageSquare, LayoutDashboard } from 'lucide-react'
 
 const PAIN_POINTS = [
   'Existing tools are overpriced and built for enterprise, not your restaurant',
@@ -29,36 +29,42 @@ const FEATURES = [
 ]
 
 export default function LandingPage() {
-  const [email, setEmail] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [success, setSuccess] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [formData, setFormData] = useState({
+    restaurantName: '', contactName: '', email: '',
+    phone: '', city: '', venueType: '', message: '',
+  })
+  const [submitting, setSubmitting] = useState(false)
+  const [submitted, setSubmitted]   = useState(false)
+  const [formError, setFormError]   = useState<string | null>(null)
 
-  async function handleWaitlist(e: React.FormEvent) {
+  function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) {
+    const { name, value } = e.target
+    setFormData(prev => ({ ...prev, [name]: value }))
+  }
+
+  async function handleDemoRequest(e: React.FormEvent) {
     e.preventDefault()
-    if (!email.trim()) return
-    setLoading(true)
-    setError(null)
+    setSubmitting(true)
+    setFormError(null)
 
     try {
-      const res = await fetch('/api/waitlist', {
+      const res = await fetch('/api/demo-request', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim() }),
+        body: JSON.stringify(formData),
       })
 
       if (!res.ok) {
         const body = await res.json()
-        setError(body.error ?? 'Something went wrong')
+        setFormError(body.error ?? 'Something went wrong')
         return
       }
 
-      setSuccess(true)
-      setEmail('')
+      setSubmitted(true)
     } catch {
-      setError('Network error — please try again')
+      setFormError('Network error — please try again')
     } finally {
-      setLoading(false)
+      setSubmitting(false)
     }
   }
 
@@ -157,46 +163,109 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Waitlist CTA */}
+      {/* Demo Request CTA */}
       <section className="bg-brand-sidebar py-16 px-6">
-        <div className="max-w-md mx-auto text-center">
-          <h2 className="text-2xl font-bold text-white tracking-tight mb-2">
-            Get early access
-          </h2>
-          <p className="text-zinc-400 text-sm mb-8">
-            Join the waitlist — we're onboarding restaurants in Germany first.
-          </p>
+        <div className="max-w-lg mx-auto">
+          <div className="text-center mb-8">
+            <h2 className="text-2xl font-bold text-white tracking-tight mb-2">
+              Request a Demo
+            </h2>
+            <p className="text-zinc-400 text-sm">
+              Tell us about your restaurant and we'll set up your account personally.
+            </p>
+          </div>
 
-          {success ? (
-            <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg px-5 py-4">
-              <p className="text-emerald-400 text-sm font-medium">You're on the list.</p>
-              <p className="text-emerald-400/70 text-xs mt-1">
-                We'll reach out when your spot opens up.
+          {submitted ? (
+            <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg px-6 py-8 text-center">
+              <p className="text-emerald-400 text-sm font-medium mb-1">Request received</p>
+              <p className="text-emerald-400/70 text-xs">
+                We'll review your request and reach out within 1–2 business days.
               </p>
             </div>
           ) : (
-            <form onSubmit={handleWaitlist} className="flex gap-2">
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="your@restaurant.com"
-                required
-                disabled={loading}
-                className="flex-1 bg-white/10 border border-white/10 text-white placeholder:text-zinc-500 text-sm px-4 py-2.5 rounded-md focus:outline-none focus:border-white/30 transition-colors duration-150"
+            <form onSubmit={handleDemoRequest} className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <input
+                  name="restaurantName"
+                  type="text"
+                  placeholder="Restaurant / Café name"
+                  value={formData.restaurantName}
+                  onChange={handleChange}
+                  required
+                  className="bg-white/10 border border-white/10 text-white placeholder:text-zinc-500 text-sm px-3 py-2.5 rounded-md focus:outline-none focus:border-white/30 transition-colors w-full"
+                />
+                <input
+                  name="contactName"
+                  type="text"
+                  placeholder="Your name"
+                  value={formData.contactName}
+                  onChange={handleChange}
+                  required
+                  className="bg-white/10 border border-white/10 text-white placeholder:text-zinc-500 text-sm px-3 py-2.5 rounded-md focus:outline-none focus:border-white/30 transition-colors w-full"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <input
+                  name="email"
+                  type="email"
+                  placeholder="Email address"
+                  value={formData.email}
+                  onChange={handleChange}
+                  required
+                  className="bg-white/10 border border-white/10 text-white placeholder:text-zinc-500 text-sm px-3 py-2.5 rounded-md focus:outline-none focus:border-white/30 transition-colors w-full"
+                />
+                <input
+                  name="phone"
+                  type="tel"
+                  placeholder="Phone number (optional)"
+                  value={formData.phone}
+                  onChange={handleChange}
+                  className="bg-white/10 border border-white/10 text-white placeholder:text-zinc-500 text-sm px-3 py-2.5 rounded-md focus:outline-none focus:border-white/30 transition-colors w-full"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <input
+                  name="city"
+                  type="text"
+                  placeholder="City"
+                  value={formData.city}
+                  onChange={handleChange}
+                  required
+                  className="bg-white/10 border border-white/10 text-white placeholder:text-zinc-500 text-sm px-3 py-2.5 rounded-md focus:outline-none focus:border-white/30 transition-colors w-full"
+                />
+                <select
+                  name="venueType"
+                  value={formData.venueType}
+                  onChange={handleChange}
+                  required
+                  className="bg-white/10 border border-white/10 text-white text-sm px-3 py-2.5 rounded-md focus:outline-none focus:border-white/30 transition-colors w-full"
+                >
+                  <option value="" disabled className="bg-zinc-800">Type of venue</option>
+                  <option value="Restaurant" className="bg-zinc-800">Restaurant</option>
+                  <option value="Café" className="bg-zinc-800">Café</option>
+                  <option value="Hotel Dining" className="bg-zinc-800">Hotel Dining</option>
+                  <option value="Other" className="bg-zinc-800">Other</option>
+                </select>
+              </div>
+              <textarea
+                name="message"
+                placeholder="Tell us about your current reservation challenges (optional)"
+                value={formData.message}
+                onChange={handleChange}
+                rows={3}
+                className="bg-white/10 border border-white/10 text-white placeholder:text-zinc-500 text-sm px-3 py-2.5 rounded-md focus:outline-none focus:border-white/30 transition-colors w-full resize-none"
               />
+              {formError && (
+                <p className="text-red-400 text-xs">{formError}</p>
+              )}
               <button
                 type="submit"
-                disabled={loading}
-                className="flex items-center gap-1.5 bg-brand-primary hover:bg-brand-primary/90 text-white text-sm font-medium px-4 py-2.5 rounded-md transition-colors duration-150 disabled:opacity-50 shrink-0"
+                disabled={submitting}
+                className="w-full bg-brand-primary hover:bg-brand-primary/90 text-white text-sm font-medium px-4 py-2.5 rounded-md transition-colors duration-150 disabled:opacity-50"
               >
-                {loading ? 'Joining...' : <><span>Join</span><ArrowRight size={14} /></>}
+                {submitting ? 'Submitting...' : 'Request demo'}
               </button>
             </form>
-          )}
-
-          {error && (
-            <p className="text-red-400 text-xs mt-2">{error}</p>
           )}
         </div>
       </section>

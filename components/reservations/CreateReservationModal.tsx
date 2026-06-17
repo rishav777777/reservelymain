@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Reservation } from '@/types'
+import { Reservation, RestaurantTable } from '@/types'
 import {
   Dialog,
   DialogContent,
@@ -29,6 +29,17 @@ interface CreateReservationModalProps {
 
 const FALLBACK_CATEGORIES = ['Indoor', 'Outdoor', 'VIP', 'Bar']
 
+const DURATION_OPTIONS = [
+  { value: 30,  label: '30 min' },
+  { value: 60,  label: '1 hour' },
+  { value: 90,  label: '1.5 hours' },
+  { value: 120, label: '2 hours' },
+  { value: 150, label: '2.5 hours' },
+  { value: 180, label: '3 hours' },
+  { value: 210, label: '3.5 hours' },
+  { value: 240, label: '4 hours' },
+]
+
 const TIME_SLOTS: string[] = (() => {
   const slots: string[] = []
   for (let h = 12; h <= 22; h++) {
@@ -48,11 +59,25 @@ export function CreateReservationModal({ open, onClose, onCreated }: CreateReser
   const [date, setDate]                       = useState(DEFAULT_DATE)
   const [time, setTime]                       = useState('19:00')
   const [category, setCategory]               = useState('')
+  const [duration, setDuration]               = useState(120)
   const [categories, setCategories]           = useState<string[]>([])
   const [specialRequests, setSpecialRequests] = useState('')
   const [messageText, setMessageText]         = useState('')
   const [loading, setLoading]                 = useState(false)
   const [error, setError]                     = useState<string | null>(null)
+  const [availableTables, setAvailableTables] = useState<RestaurantTable[]>([])
+  const [preferredTableId, setPreferredTableId] = useState('')
+  const [loadingTables, setLoadingTables]     = useState(false)
+
+  useEffect(() => {
+    if (!date || !time || !partySize) { setAvailableTables([]); return }
+    setLoadingTables(true)
+    fetch(`/api/tables/available?date=${date}&time=${time}&party_size=${partySize}&duration=${duration}&category=${category}`)
+      .then((r) => r.json())
+      .then((d) => setAvailableTables(d.tables ?? []))
+      .catch(() => setAvailableTables([]))
+      .finally(() => setLoadingTables(false))
+  }, [date, time, partySize, duration, category])
 
   useEffect(() => {
     if (!open) return
@@ -70,6 +95,8 @@ export function CreateReservationModal({ open, onClose, onCreated }: CreateReser
     setDate(DEFAULT_DATE)
     setTime('19:00')
     setCategory('')
+    setDuration(120)
+    setPreferredTableId('')
     setSpecialRequests('')
     setMessageText('')
     setError(null)
@@ -98,6 +125,8 @@ export function CreateReservationModal({ open, onClose, onCreated }: CreateReser
           reservation_time: time,
           category: category || null,
           special_requests: specialRequests || null,
+          duration_minutes: duration,
+          preferred_table_id: preferredTableId || null,
           status: 'pending',
         }),
       })
@@ -209,6 +238,21 @@ export function CreateReservationModal({ open, onClose, onCreated }: CreateReser
             </div>
           </div>
 
+          {/* Duration */}
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium text-gray-700">Duration</Label>
+            <Select value={String(duration)} onValueChange={(v) => v && setDuration(Number(v))}>
+              <SelectTrigger className="h-8 text-sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {DURATION_OPTIONS.map((o) => (
+                  <SelectItem key={o.value} value={String(o.value)} className="text-sm">{o.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
           {/* Date + Time */}
           <div className="grid grid-cols-2 gap-2">
             <div className="space-y-1.5">
@@ -234,6 +278,34 @@ export function CreateReservationModal({ open, onClose, onCreated }: CreateReser
                 </SelectContent>
               </Select>
             </div>
+          </div>
+
+          {/* Table preference */}
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium text-gray-700">
+              Table preference
+              <span className="text-zinc-400 font-normal ml-1">— optional</span>
+            </Label>
+            <Select
+              value={preferredTableId}
+              onValueChange={(v) => v && setPreferredTableId(v)}
+              disabled={loadingTables || availableTables.length === 0}
+            >
+              <SelectTrigger className="h-8 text-sm">
+                <SelectValue placeholder={
+                  loadingTables ? 'Checking availability...' :
+                  availableTables.length === 0 ? 'Set date, time & guests first' :
+                  'Any available table'
+                } />
+              </SelectTrigger>
+              <SelectContent>
+                {availableTables.map((t) => (
+                  <SelectItem key={t.id} value={t.id} className="text-sm">
+                    {t.name} — {t.category} · {t.capacity} seats
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Special Requests */}

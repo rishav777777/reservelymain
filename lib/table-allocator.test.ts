@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { allocateTable, isWithinWindow, parseTimeToMinutes } from './table-allocator'
+import { allocateTable, isWithinWindow, parseTimeToMinutes, getOverlappingTableIds } from './table-allocator'
 import type { RestaurantTable } from '@/types'
 
 const makeTable = (overrides: Partial<RestaurantTable>): RestaurantTable => ({
@@ -9,6 +9,8 @@ const makeTable = (overrides: Partial<RestaurantTable>): RestaurantTable => ({
   capacity: 4,
   category: 'Indoor',
   is_active: true,
+  image_url: null,
+  image_urls: [],
   created_at: '2024-01-01',
   ...overrides,
 })
@@ -86,6 +88,94 @@ describe('parseTimeToMinutes', () => {
 
   it('handles HH:MM:SS by using first two parts', () => {
     expect(parseTimeToMinutes('13:00:00')).toBe(780)
+  })
+})
+
+describe('getOverlappingTableIds', () => {
+  const ex = (
+    table_id: string | null,
+    reservation_time: string,
+    duration_minutes: number
+  ) => ({ table_id, reservation_time, duration_minutes })
+
+  it('returns empty array when no existing reservations', () => {
+    expect(getOverlappingTableIds([], '13:00', 60)).toEqual([])
+  })
+
+  it('returns empty when new reservation starts exactly when existing ends (adjacent after)', () => {
+    // existing 12:00–14:00, new 14:00–15:00 → newStart = eEnd → no overlap
+    expect(getOverlappingTableIds([ex('t1', '12:00', 120)], '14:00', 60)).toEqual([])
+  })
+
+  it('returns empty when new reservation ends exactly when existing starts (adjacent before)', () => {
+    // existing 14:00–16:00, new 12:00–14:00 → newEnd = eStart → no overlap
+    expect(getOverlappingTableIds([ex('t1', '14:00', 120)], '12:00', 120)).toEqual([])
+  })
+
+  it('returns empty when new is completely before existing', () => {
+    // existing 15:00–17:00, new 12:00–13:00
+    expect(getOverlappingTableIds([ex('t1', '15:00', 120)], '12:00', 60)).toEqual([])
+  })
+
+  it('returns empty when new is completely after existing', () => {
+    // existing 12:00–13:00, new 14:00–15:00
+    expect(getOverlappingTableIds([ex('t1', '12:00', 60)], '14:00', 60)).toEqual([])
+  })
+
+  it('returns overlapping table when new starts at the same time as existing (exact overlap)', () => {
+    expect(getOverlappingTableIds([ex('t1', '13:00', 120)], '13:00', 60)).toEqual(['t1'])
+  })
+
+  it('returns overlapping table when new partially overlaps at start of existing', () => {
+    // existing 14:00–16:00, new 13:00–14:30 → overlap 14:00–14:30
+    expect(getOverlappingTableIds([ex('t1', '14:00', 120)], '13:00', 90)).toEqual(['t1'])
+  })
+
+  it('returns overlapping table when new partially overlaps at end of existing', () => {
+    // existing 12:00–14:00, new 13:30–15:00 → overlap 13:30–14:00
+    expect(getOverlappingTableIds([ex('t1', '12:00', 120)], '13:30', 90)).toEqual(['t1'])
+  })
+
+  it('returns overlapping table when new is entirely contained within existing', () => {
+    // existing 12:00–15:00, new 13:00–14:00
+    expect(getOverlappingTableIds([ex('t1', '12:00', 180)], '13:00', 60)).toEqual(['t1'])
+  })
+
+  it('returns overlapping table when new completely wraps existing', () => {
+    // existing 13:00–14:00, new 12:00–15:00
+    expect(getOverlappingTableIds([ex('t1', '13:00', 60)], '12:00', 180)).toEqual(['t1'])
+  })
+
+  it('skips reservations with null table_id', () => {
+    expect(getOverlappingTableIds([ex(null, '13:00', 120)], '13:00', 60)).toEqual([])
+  })
+
+  it('returns all overlapping IDs when multiple reservations overlap', () => {
+    const existing = [
+      ex('t1', '12:00', 120), // 12:00–14:00
+      ex('t2', '13:00', 120), // 13:00–15:00
+      ex('t3', '15:00', 120), // 15:00–17:00
+    ]
+    // new: 13:30–14:30 → t1 ✓, t2 ✓, t3 ✗ (14:30 ≤ 15:00)
+    expect(getOverlappingTableIds(existing, '13:30', 60)).toEqual(['t1', 't2'])
+  })
+
+  it('blocks a shorter reservation that falls within a 3-hour booking window', () => {
+    // existing 13:00–16:00 (3h), new 14:00–15:00 (1h) → overlap
+    expect(getOverlappingTableIds([ex('t1', '13:00', 180)], '14:00', 60)).toEqual(['t1'])
+  })
+
+  it('does not block a reservation that follows a 3-hour booking', () => {
+    // existing 13:00–16:00 (3h), new 16:00–17:00 → adjacent, no overlap
+    expect(getOverlappingTableIds([ex('t1', '13:00', 180)], '16:00', 60)).toEqual([])
+  })
+
+  it('handles mixed null and non-null table_ids, returning only non-null overlaps', () => {
+    const existing = [
+      ex('t1', '13:00', 120), // overlaps
+      ex(null, '13:00', 120), // same time but null — skipped
+    ]
+    expect(getOverlappingTableIds(existing, '13:00', 60)).toEqual(['t1'])
   })
 })
 

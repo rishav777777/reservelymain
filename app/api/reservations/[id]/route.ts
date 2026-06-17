@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-import { allocateTable, isWithinWindow } from '@/lib/table-allocator'
+import { allocateTable, getOverlappingTableIds } from '@/lib/table-allocator'
 import { sendConfirmationEmail, sendRejectionEmail } from '@/lib/email'
 import { NextRequest, NextResponse } from 'next/server'
 import { ReservationStatus } from '@/types'
@@ -51,26 +51,25 @@ export async function PATCH(
       .eq('restaurant_id', existing.restaurant_id)
       .eq('is_active', true)
 
-    // Block tables with confirmed/arrived reservations within a 2-hour window
-    // of this reservation's time to prevent overlapping table assignments.
     const { data: sameDay } = await supabase
       .from('reservations')
-      .select('table_id, reservation_time')
+      .select('table_id, reservation_time, duration_minutes')
       .eq('restaurant_id', existing.restaurant_id)
       .eq('reservation_date', existing.reservation_date)
       .in('status', ['confirmed', 'arrived'])
       .neq('id', id)
 
-    const bookedIds = (sameDay ?? [])
-      .filter((r) => isWithinWindow(existing.reservation_time, r.reservation_time, 120))
-      .map((r) => r.table_id)
-      .filter(Boolean) as string[]
+    const occupiedIds = getOverlappingTableIds(
+      sameDay ?? [],
+      existing.reservation_time,
+      existing.duration_minutes ?? 120
+    )
 
     const allocated = allocateTable(
       allTables ?? [],
       existing.party_size,
       existing.category,
-      bookedIds
+      occupiedIds
     )
 
     if (allocated) tableId = allocated.id

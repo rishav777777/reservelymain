@@ -50,3 +50,32 @@ export function isWithinWindow(
   const candidate = parseTimeToMinutes(candidateTime)
   return Math.abs(target - candidate) < windowMinutes
 }
+
+/**
+ * Given a list of existing confirmed/arrived reservations (with table_id and duration),
+ * return the set of table IDs that overlap with a proposed new reservation.
+ *
+ * Two reservations overlap when:
+ *   newStart < existingEnd  AND  newEnd > existingStart
+ */
+export function getOverlappingTableIds(
+  existingReservations: Array<{
+    table_id: string | null
+    reservation_time: string
+    duration_minutes: number
+  }>,
+  newTime: string,
+  newDuration: number
+): string[] {
+  const newStart = parseTimeToMinutes(newTime)
+  const newEnd   = newStart + newDuration
+
+  return existingReservations
+    .filter(r => {
+      if (!r.table_id) return false
+      const eStart = parseTimeToMinutes(r.reservation_time)
+      const eEnd   = eStart + (r.duration_minutes ?? 120)
+      return newStart < eEnd && newEnd > eStart
+    })
+    .map(r => r.table_id!)
+}

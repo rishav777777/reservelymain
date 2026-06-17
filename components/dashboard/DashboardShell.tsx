@@ -4,12 +4,15 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { UserRole } from '@/types'
-import { LayoutDashboard, Table2, Settings, LogOut } from 'lucide-react'
+import { LayoutDashboard, Table2, Settings, BarChart3, LogOut, Users, Inbox } from 'lucide-react'
 
 const NAV_ITEMS = [
-  { href: '/dashboard',          label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/dashboard/tables',   label: 'Tables',    icon: Table2 },
-  { href: '/dashboard/settings', label: 'Settings',  icon: Settings },
+  { href: '/dashboard',            label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/dashboard/tables',     label: 'Tables',    icon: Table2 },
+  { href: '/dashboard/analytics',  label: 'Analytics', icon: BarChart3 },
+  { href: '/dashboard/settings',   label: 'Settings',  icon: Settings },
+  { href: '/dashboard/staff',      label: 'Users',     icon: Users },
+  { href: '/dashboard/requests',   label: 'Requests',  icon: Inbox },
 ]
 
 export function DashboardShell({ children, userRole }: { children: React.ReactNode; userRole: UserRole }) {
@@ -40,8 +43,10 @@ export function DashboardShell({ children, userRole }: { children: React.ReactNo
         {/* Nav */}
         <nav className="flex-1 px-2 py-4 space-y-0.5">
           {NAV_ITEMS.filter((item) => {
-            if (item.href === '/dashboard/settings') return userRole !== 'staff'
+            if (item.href === '/dashboard/settings')  return userRole !== 'staff'
             if (item.href === '/dashboard/analytics') return userRole !== 'staff'
+            if (item.href === '/dashboard/staff')     return userRole === 'owner'
+            if (item.href === '/dashboard/requests')  return userRole === 'owner'
             return true
           }).map(({ href, label, icon: Icon }) => {
             const active = pathname === href

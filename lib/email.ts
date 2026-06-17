@@ -1,7 +1,6 @@
 import { Resend } from 'resend'
 import { Reservation } from '@/types'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
 const FROM = 'Reservely <noreply@reservely.app>'
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
 
@@ -23,6 +22,7 @@ function formatTime(time: string): string {
 }
 
 export async function sendConfirmationEmail(reservation: Reservation, restaurantName: string) {
+  const resend = new Resend(process.env.RESEND_API_KEY)
   const tableLabel = reservation.restaurant_tables?.name
     ? ` — ${reservation.restaurant_tables.name}`
     : ''
@@ -50,6 +50,8 @@ export async function sendConfirmationEmail(reservation: Reservation, restaurant
 }
 
 export async function sendRejectionEmail(reservation: Reservation, restaurantName: string) {
+  const resend = new Resend(process.env.RESEND_API_KEY)
+
   await resend.emails.send({
     from: FROM,
     to: reservation.guest_email,

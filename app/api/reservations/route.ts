@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { getOverlappingTableIds } from '@/lib/table-allocator'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function GET() {
@@ -27,6 +28,8 @@ export async function POST(request: NextRequest) {
     category,
     special_requests,
     status = 'pending',
+    duration_minutes = 120,
+    preferred_table_id,
   } = body
 
   if (!guest_name?.trim() || !guest_email?.trim() || !party_size || !reservation_date || !reservation_time) {
@@ -46,10 +49,32 @@ export async function POST(request: NextRequest) {
 
   const refCode = 'RSV-' + Math.random().toString(36).toUpperCase().slice(2, 8)
 
+  let assignedTableId: string | null = null
+
+  if (preferred_table_id) {
+    const { data: existing } = await supabase
+      .from('reservations')
+      .select('table_id, reservation_time, duration_minutes')
+      .eq('reservation_date', reservation_date)
+      .in('status', ['confirmed', 'arrived'])
+      .not('table_id', 'is', null)
+
+    const occupiedIds = getOverlappingTableIds(
+      existing ?? [],
+      reservation_time,
+      duration_minutes
+    )
+
+    if (!occupiedIds.includes(preferred_table_id)) {
+      assignedTableId = preferred_table_id
+    }
+  }
+
   const { data, error } = await supabase
     .from('reservations')
     .insert({
       restaurant_id: profile.restaurant_id,
+      table_id: assignedTableId,
       reference_code: refCode,
       guest_name: guest_name.trim(),
       guest_email: guest_email.trim(),
@@ -59,6 +84,7 @@ export async function POST(request: NextRequest) {
       reservation_time,
       category: category ?? null,
       special_requests: special_requests?.trim() ?? null,
+      duration_minutes,
       status,
       is_walk_in: false,
     })
