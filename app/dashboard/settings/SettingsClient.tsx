@@ -115,6 +115,36 @@ export function SettingsClient({ restaurant }: SettingsClientProps) {
         </Button>
       </form>
 
+      {/* Booking Link */}
+      <div className="pt-6 border-t border-zinc-200">
+        <p className="text-xs font-semibold text-zinc-700 mb-1">
+          Your Booking Link
+        </p>
+        <p className="text-xs text-zinc-400 mb-3">
+          Share this link with guests so they can make reservations directly.
+        </p>
+        <div className="flex items-center gap-2">
+          <div className="flex-1 bg-zinc-50 border border-zinc-200 rounded-md px-3 py-1.5 text-xs text-zinc-600 font-mono truncate">
+            {typeof window !== 'undefined'
+              ? `${window.location.origin}/book/${restaurant?.slug ?? '...'}`
+              : `/book/${restaurant?.slug ?? '...'}`
+            }
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              const url = `${window.location.origin}/book/${restaurant?.slug}`
+              navigator.clipboard.writeText(url)
+              toast.success('Booking link copied')
+            }}
+            className="shrink-0 text-xs font-medium text-zinc-700 border border-zinc-300
+                       rounded-md px-3 py-1.5 hover:bg-zinc-50 transition-colors"
+          >
+            Copy
+          </button>
+        </div>
+      </div>
+
       {/* Data & Privacy */}
       <div className="pt-6 border-t border-zinc-200">
         <p className="text-xs font-semibold text-zinc-700 mb-1">Data & Privacy</p>

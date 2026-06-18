@@ -17,7 +17,7 @@ export default async function SettingsPage() {
 
   const { data: restaurant } = await supabase
     .from('restaurants')
-    .select('*')
+    .select('id, name, phone, address, slug, description, email, subdomain, created_at')
     .eq('id', profile?.restaurant_id)
     .single()
 

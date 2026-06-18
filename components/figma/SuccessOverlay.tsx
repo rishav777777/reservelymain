@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 interface Props {
   dateStr: string;
   timeStr: string;
-  tableId: number;
+  tableId: string;
   seats: number;
   lang: "DE" | "EN";
 }

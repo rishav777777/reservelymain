@@ -44,15 +44,14 @@ function avatarColor(s: string) {
   return AVATAR_PALETTES[Math.abs(h) % AVATAR_PALETTES.length]
 }
 
-// Status display config
 const STATUS_CONFIG = {
-  pending:   { label: null,          bg: null,                         border: null,                          textColor: null },
-  confirmed: { label: 'Bestätigt',   bg: 'rgba(27,122,67,0.1)',        border: '1px solid rgba(27,122,67,0.15)',   textColor: '#1B7A43' },
-  declined:  { label: 'Abgelehnt',   bg: 'rgba(168,41,41,0.08)',       border: '1px solid rgba(168,41,41,0.12)',   textColor: '#A82929' },
-  arrived:   { label: 'Angekommen',  bg: 'rgba(13,71,43,0.12)',        border: '1px solid rgba(13,71,43,0.2)',     textColor: '#0D472B' },
-  no_show:   { label: 'Nicht erschienen', bg: 'rgba(120,100,30,0.1)', border: '1px solid rgba(120,100,30,0.2)',  textColor: '#7a6020' },
-  completed: { label: 'Abgeschlossen', bg: 'rgba(100,120,110,0.08)',   border: '1px solid rgba(100,120,110,0.15)', textColor: '#4a6058' },
-  cancelled: { label: 'Storniert',   bg: 'rgba(168,41,41,0.08)',       border: '1px solid rgba(168,41,41,0.12)',   textColor: '#A82929' },
+  pending:   { label: null,               bg: null,                          border: null,                           textColor: null },
+  confirmed: { label: 'Bestätigt',        bg: 'rgba(27,122,67,0.1)',         border: '1px solid rgba(27,122,67,0.15)',    textColor: '#1B7A43' },
+  declined:  { label: 'Abgelehnt',        bg: 'rgba(168,41,41,0.08)',        border: '1px solid rgba(168,41,41,0.12)',    textColor: '#A82929' },
+  arrived:   { label: 'Angekommen',       bg: 'rgba(13,71,43,0.12)',         border: '1px solid rgba(13,71,43,0.2)',      textColor: '#0D472B' },
+  no_show:   { label: 'Nicht erschienen', bg: 'rgba(120,100,30,0.1)',        border: '1px solid rgba(120,100,30,0.2)',    textColor: '#7a6020' },
+  completed: { label: 'Abgeschlossen',    bg: 'rgba(100,120,110,0.08)',      border: '1px solid rgba(100,120,110,0.15)', textColor: '#4a6058' },
+  cancelled: { label: 'Storniert',        bg: 'rgba(168,41,41,0.08)',        border: '1px solid rgba(168,41,41,0.12)',    textColor: '#A82929' },
 }
 
 const CARD_BG = {
@@ -78,7 +77,7 @@ const CARD_BORDER = {
 export function DayFeedCard({ reservation, onConfirm, onDecline, onArrived, onNoShow }: DayFeedCardProps) {
   const [reply,       setReply]       = useState("")
   const [actioned,    setActioned]    = useState(false)
-  const [expanded,    setExpanded]    = useState(false)  // confirmed cards are collapsible
+  const [expanded,    setExpanded]    = useState(false)
   const [localStatus, setLocalStatus] = useState(reservation.status)
 
   const palette  = avatarColor(reservation.initials)
@@ -127,7 +126,6 @@ export function DayFeedCard({ reservation, onConfirm, onDecline, onArrived, onNo
     }, 300)
   }
 
-  // Confirmed cards can be collapsed — only show header when collapsed
   const showBody = isPending || isDone || isArrived || expanded
 
   return (
@@ -147,11 +145,10 @@ export function DayFeedCard({ reservation, onConfirm, onDecline, onArrived, onNo
         pointerEvents: actioned ? "none" : "auto",
       }}
     >
-      {/* ── Status banner (non-pending) ── */}
+      {/* Status banner (non-pending) */}
       {!isPending && cfg.label && (
         <div
           className="flex items-center justify-between px-6 py-2.5"
-          style={{ background: cfg.bg ?? '', borderBottom: cfg.border ?? '' }}
           onClick={() => isConfirmed && setExpanded(v => !v)}
           style={{
             background: cfg.bg ?? '',
@@ -160,11 +157,11 @@ export function DayFeedCard({ reservation, onConfirm, onDecline, onArrived, onNo
           }}
         >
           <div className="flex items-center gap-2">
-            {localStatus === 'confirmed'  && <Check    size={14} strokeWidth={2.5} style={{ color: cfg.textColor! }} />}
-            {localStatus === 'arrived'    && <UserCheck size={14} strokeWidth={2.5} style={{ color: cfg.textColor! }} />}
-            {localStatus === 'no_show'    && <UserX    size={14} strokeWidth={2.5} style={{ color: cfg.textColor! }} />}
+            {localStatus === 'confirmed'  && <Check     size={14} strokeWidth={2.5} style={{ color: cfg.textColor! }} />}
+            {localStatus === 'arrived'    && <UserCheck  size={14} strokeWidth={2.5} style={{ color: cfg.textColor! }} />}
+            {localStatus === 'no_show'    && <UserX      size={14} strokeWidth={2.5} style={{ color: cfg.textColor! }} />}
             {(localStatus === 'declined' || localStatus === 'cancelled') && <X size={14} strokeWidth={2.5} style={{ color: cfg.textColor! }} />}
-            {localStatus === 'completed'  && <Check    size={14} strokeWidth={2.5} style={{ color: cfg.textColor! }} />}
+            {localStatus === 'completed'  && <Check      size={14} strokeWidth={2.5} style={{ color: cfg.textColor! }} />}
             <span style={{
               fontFamily: "'DM Sans', sans-serif", fontSize: "12px", fontWeight: 700,
               color: cfg.textColor!, letterSpacing: "0.1em", textTransform: "uppercase",
@@ -172,7 +169,6 @@ export function DayFeedCard({ reservation, onConfirm, onDecline, onArrived, onNo
               {cfg.label}
             </span>
           </div>
-          {/* Expand/collapse toggle for confirmed */}
           {isConfirmed && (
             <div style={{ color: cfg.textColor!, opacity: 0.6 }}>
               {expanded ? <ChevronUp size={14}/> : <ChevronDown size={14}/>}
@@ -181,18 +177,16 @@ export function DayFeedCard({ reservation, onConfirm, onDecline, onArrived, onNo
         </div>
       )}
 
-      {/* ── Main header (always visible) ── */}
+      {/* Main header (always visible) */}
       <div
         className="flex items-center gap-4 px-6 pt-5 pb-4"
         onClick={() => isConfirmed && setExpanded(v => !v)}
         style={{ cursor: isConfirmed ? 'pointer' : 'default' }}
       >
-        {/* Avatar */}
         <div className="flex items-center justify-center rounded-2xl shrink-0" style={{ width: 56, height: 56, background: palette.bg, fontFamily: "'DM Sans', sans-serif", fontSize: "18px", fontWeight: 700, color: palette.text, flexShrink: 0 }}>
           {reservation.initials}
         </div>
 
-        {/* Name + meta */}
         <div className="flex-1 min-w-0">
           <p style={{ fontFamily: "'Fraunces', serif", fontSize: "22px", fontWeight: 500, color: "#1C231F", letterSpacing: "-0.02em", lineHeight: 1.1, marginBottom: "5px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
             {reservation.name}
@@ -213,7 +207,6 @@ export function DayFeedCard({ reservation, onConfirm, onDecline, onArrived, onNo
           </div>
         </div>
 
-        {/* Guest badge */}
         <div className="flex items-center justify-center rounded-2xl shrink-0" style={{ width: 56, height: 56, background: "rgba(13,71,43,0.08)", border: "1px solid rgba(13,71,43,0.12)" }}>
           <div className="flex flex-col items-center">
             <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "22px", fontWeight: 800, color: "#0D472B", lineHeight: 1 }}>{reservation.guests}</span>
@@ -222,10 +215,9 @@ export function DayFeedCard({ reservation, onConfirm, onDecline, onArrived, onNo
         </div>
       </div>
 
-      {/* ── Expandable body ── */}
+      {/* Expandable body */}
       {showBody && (
         <>
-          {/* Special note */}
           {reservation.note && (
             <div className="px-6 pb-4">
               <div className="flex items-start gap-3 rounded-xl px-4 py-3.5" style={{ background: "rgba(13,71,43,0.05)", border: "1px solid rgba(13,71,43,0.1)" }}>
@@ -237,7 +229,6 @@ export function DayFeedCard({ reservation, onConfirm, onDecline, onArrived, onNo
             </div>
           )}
 
-          {/* ── PENDING: reply + confirm/decline ── */}
           {isPending && (
             <>
               <div className="px-6 pb-4">
@@ -253,13 +244,15 @@ export function DayFeedCard({ reservation, onConfirm, onDecline, onArrived, onNo
                 />
               </div>
               <div className="flex gap-3 px-6 pb-6">
-                <button onClick={handleDecline} className="flex-1 flex items-center justify-center gap-2.5 rounded-xl active:scale-95" style={{ height: 64, background: "#A82929", border: "none", boxShadow: "0 4px 16px rgba(168,41,41,0.3)", transition: "all .15s" }}
+                <button onClick={handleDecline} className="flex-1 flex items-center justify-center gap-2.5 rounded-xl active:scale-95"
+                  style={{ height: 64, background: "#A82929", border: "none", boxShadow: "0 4px 16px rgba(168,41,41,0.3)", transition: "all .15s" }}
                   onMouseEnter={e => { e.currentTarget.style.background = "#C23030" }}
                   onMouseLeave={e => { e.currentTarget.style.background = "#A82929" }}>
                   <X size={20} color="#fff" strokeWidth={2.5}/>
                   <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "17px", fontWeight: 700, color: "#fff", letterSpacing: "0.03em" }}>Ablehnen</span>
                 </button>
-                <button onClick={handleConfirm} className="flex-1 flex items-center justify-center gap-2.5 rounded-xl active:scale-95" style={{ height: 64, background: "#1B7A43", border: "none", boxShadow: "0 4px 16px rgba(27,122,67,0.35)", transition: "all .15s" }}
+                <button onClick={handleConfirm} className="flex-1 flex items-center justify-center gap-2.5 rounded-xl active:scale-95"
+                  style={{ height: 64, background: "#1B7A43", border: "none", boxShadow: "0 4px 16px rgba(27,122,67,0.35)", transition: "all .15s" }}
                   onMouseEnter={e => { e.currentTarget.style.background = "#22964F" }}
                   onMouseLeave={e => { e.currentTarget.style.background = "#1B7A43" }}>
                   <Check size={20} color="#fff" strokeWidth={2.5}/>
@@ -269,7 +262,6 @@ export function DayFeedCard({ reservation, onConfirm, onDecline, onArrived, onNo
             </>
           )}
 
-          {/* ── CONFIRMED: arrived / no-show actions ── */}
           {isConfirmed && (
             <div className="flex gap-3 px-6 pb-6 pt-1">
               <button onClick={handleNoShow} className="flex-1 flex items-center justify-center gap-2 rounded-xl active:scale-95"
@@ -293,7 +285,6 @@ export function DayFeedCard({ reservation, onConfirm, onDecline, onArrived, onNo
             </div>
           )}
 
-          {/* Bottom padding for arrived/done cards */}
           {(isArrived || isDone) && !isPending && !isConfirmed && (
             <div style={{ height: 20 }}/>
           )}

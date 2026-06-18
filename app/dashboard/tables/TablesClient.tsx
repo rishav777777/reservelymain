@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import { RestaurantTable, UserRole } from '@/types'
-import { createClient } from '@/lib/supabase/client'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -37,6 +36,7 @@ export function TablesClient({ tables: initial, restaurantId, userRole }: Tables
     active:   ts.filter((t) => t.is_active).length,
     capacity: ts.reduce((sum, t) => sum + t.capacity, 0),
   })
+
   const [addOpen, setAddOpen] = useState(false)
   const [name, setName] = useState('')
   const [capacity, setCapacity] = useState(2)
@@ -83,10 +83,6 @@ export function TablesClient({ tables: initial, restaurantId, userRole }: Tables
     } finally {
       setSaving(false)
     }
-    setTables((prev) =>
-      prev.map((t) => (t.id === table.id ? { ...t, is_active: !t.is_active } : t))
-    )
-    toast.success(table.is_active ? `${table.name} deactivated` : `${table.name} activated`)
   }
 
   return (

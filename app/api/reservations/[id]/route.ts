@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { allocateTable, getOverlappingTableIds } from '@/lib/table-allocator'
 import { sendConfirmationEmail, sendRejectionEmail } from '@/lib/email'
+import { logAction } from '@/lib/audit'
 import { NextRequest, NextResponse } from 'next/server'
 import { ReservationStatus } from '@/types'
 
@@ -24,6 +25,14 @@ export async function PATCH(
 
   const supabase = await createClient()
 
+  // Auth check — must be before any DB operation
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { data: profile } = await supabase
+    .from('profiles').select('restaurant_id, full_name').eq('id', user.id).single()
+  if (!profile) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
   const { data: existing, error: fetchErr } = await supabase
     .from('reservations')
     .select('*')
@@ -32,6 +41,11 @@ export async function PATCH(
 
   if (fetchErr || !existing) {
     return NextResponse.json({ error: 'Reservation not found' }, { status: 404 })
+  }
+
+  // Ownership check — prevent cross-restaurant modification
+  if (existing.restaurant_id !== profile.restaurant_id) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
   const allowed = VALID_TRANSITIONS[existing.status as ReservationStatus] ?? []
@@ -87,7 +101,22 @@ export async function PATCH(
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  // Fire-and-forget email — never block the response
+  // Fire-and-forget audit log
+  logAction({
+    restaurant_id: existing.restaurant_id,
+    actor_id:      user.id,
+    actor_name:    profile.full_name ?? null,
+    action:        `reservation.${status}`,
+    target_type:   'reservation',
+    target_id:     id,
+    metadata: {
+      reference_code: data.reference_code,
+      guest_name:     data.guest_name,
+      new_status:     status,
+    },
+  }).catch(() => {})
+
+  // Fire-and-forget email
   if (status === 'confirmed' || status === 'rejected') {
     const { data: restaurant } = await supabase
       .from('restaurants')

@@ -79,11 +79,12 @@ export function Screen3({ lang, dateStr, rawDate, timeStr, tableId, tableName, s
   const [pay,         setPay]         = useState(tr.paymentOptions[0]);
   const [notes,       setNotes]       = useState("");
   const [drop,        setDrop]        = useState(false);
+  const [consented,   setConsented]   = useState(false);
   const [sending,     setSending]     = useState(false);
   const [success,     setSuccess]     = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
-  const canSubmit = name.trim().length > 0 && phone.trim().length > 0 && email.trim().length > 0;
+  const canSubmit = name.trim().length > 0 && phone.trim().length > 0 && email.trim().length > 0 && consented;
 
   const handleSubmit = async () => {
     if (!canSubmit || sending || success) return;
@@ -104,6 +105,8 @@ export function Screen3({ lang, dateStr, rawDate, timeStr, tableId, tableName, s
       status:           "pending",         // staff must confirm → triggers table assignment
       reference_code:   generateRef(),
       duration_minutes: 90,
+      guest_consented:  true,
+      consented_at:     new Date().toISOString(),
     });
 
     setSending(false);
@@ -218,6 +221,26 @@ export function Screen3({ lang, dateStr, rawDate, timeStr, tableId, tableName, s
         <FieldGlare/>
         <MessageSquare size={16} color="#0D472B" strokeWidth={2} style={{marginTop:"2px",flexShrink:0,position:"relative"}}/>
         <textarea value={notes} onChange={e=>setNotes(e.target.value)} placeholder={tr.notes} rows={3} style={{...INPUT, resize:"none", lineHeight:1.6}}/>
+      </div>
+
+      {/* Consent */}
+      <div style={{ display:'flex', alignItems:'flex-start', gap:'12px',
+        background:'rgba(255,255,255,0.25)', border:'1.5px solid rgba(255,255,255,0.5)',
+        borderRadius:'18px', padding:'15px 18px' }}>
+        <input
+          type="checkbox"
+          id="guest-consent"
+          checked={consented}
+          onChange={e => setConsented(e.target.checked)}
+          style={{ marginTop:'2px', width:'16px', height:'16px',
+            accentColor:'#0D472B', flexShrink:0, cursor:'pointer' }}
+        />
+        <label htmlFor="guest-consent" style={{ fontFamily:"'DM Sans', sans-serif",
+          fontSize:'12px', color:'#4A5A52', lineHeight:1.6, cursor:'pointer' }}>
+          {lang === 'DE'
+            ? 'Ich stimme zu, dass meine persönlichen Daten zum Zweck der Reservierungsabwicklung gespeichert werden (DSGVO Art. 6).'
+            : 'I consent to my personal data being stored for reservation purposes in accordance with GDPR Art. 6.'}
+        </label>
       </div>
 
       {submitError && (

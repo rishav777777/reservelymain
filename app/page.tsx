@@ -275,6 +275,10 @@ export default function LandingPage() {
         <p className="text-zinc-600 text-xs">
           © {new Date().getFullYear()} Reservely · Built for restaurants in Germany
         </p>
+        <div className="flex items-center justify-center gap-4 mt-2">
+          <Link href="/privacy" className="text-zinc-600 hover:text-zinc-400 text-xs transition-colors">Privacy Policy</Link>
+          <Link href="/terms" className="text-zinc-600 hover:text-zinc-400 text-xs transition-colors">Terms of Service</Link>
+        </div>
       </footer>
     </div>
   )
