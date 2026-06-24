@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
         )
       }
     } catch {
-      console.warn('[ratelimit] Redis unavailable, skipping rate limit check')
+      // Fails open — rate limit unavailable
     }
 
     const { name, email, password, role } = await request.json()
@@ -100,7 +100,7 @@ export async function GET() {
 
     const { data: profile } = await supabase
       .from('profiles').select('restaurant_id, role').eq('id', user.id).single()
-    if (!profile || profile.role !== 'owner') {
+    if (!profile || !['owner', 'manager'].includes(profile.role)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 

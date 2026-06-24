@@ -24,6 +24,7 @@ export async function GET() {
       { data: tables },
       { data: staff },
       { data: restaurant },
+      { data: guestProfiles },
     ] = await Promise.all([
       supabase
         .from('reservations')
@@ -45,6 +46,11 @@ export async function GET() {
         .select('id, name, created_at')
         .eq('id', restaurantId)
         .single(),
+      supabase
+        .from('guest_profiles')
+        .select('id, email, name, phone, visit_count, first_visit, last_visit, is_stammgast, preferences, notes, created_at')
+        .eq('restaurant_id', restaurantId)
+        .order('visit_count', { ascending: false }),
     ])
 
     const exportDate = new Date().toISOString().split('T')[0]
@@ -57,10 +63,12 @@ export async function GET() {
         total_reservations: (reservations ?? []).length,
         total_tables:       (tables ?? []).length,
         total_staff:        (staff ?? []).length,
+        total_guests:       (guestProfiles ?? []).length,
       },
-      reservations: reservations ?? [],
-      tables:       tables ?? [],
-      staff:        staff ?? [],
+      reservations:  reservations ?? [],
+      tables:        tables ?? [],
+      staff:         staff ?? [],
+      guest_profiles: guestProfiles ?? [],
     }
 
     return new Response(JSON.stringify(payload, null, 2), {

@@ -20,6 +20,8 @@ import {
 } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
+import { useLang } from '@/components/i18n/LanguageProvider'
+import { dashboardT } from '@/lib/i18n/dashboardT'
 
 interface CreateReservationModalProps {
   open: boolean
@@ -28,17 +30,6 @@ interface CreateReservationModalProps {
 }
 
 const FALLBACK_CATEGORIES = ['Indoor', 'Outdoor', 'VIP', 'Bar']
-
-const DURATION_OPTIONS = [
-  { value: 30,  label: '30 min' },
-  { value: 60,  label: '1 hour' },
-  { value: 90,  label: '1.5 hours' },
-  { value: 120, label: '2 hours' },
-  { value: 150, label: '2.5 hours' },
-  { value: 180, label: '3 hours' },
-  { value: 210, label: '3.5 hours' },
-  { value: 240, label: '4 hours' },
-]
 
 const TIME_SLOTS: string[] = (() => {
   const slots: string[] = []
@@ -52,6 +43,10 @@ const TIME_SLOTS: string[] = (() => {
 const DEFAULT_DATE = new Date().toISOString().split('T')[0]
 
 export function CreateReservationModal({ open, onClose, onCreated }: CreateReservationModalProps) {
+  const { lang } = useLang()
+  const tx = dashboardT[lang].createReservation
+  const DURATION_OPTIONS = tx.durationOptions
+
   const [guestName, setGuestName]             = useState('')
   const [guestEmail, setGuestEmail]           = useState('')
   const [guestPhone, setGuestPhone]           = useState('')
@@ -168,13 +163,13 @@ export function CreateReservationModal({ open, onClose, onCreated }: CreateReser
     <Dialog open={open} onOpenChange={(v) => !v && handleClose()}>
       <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-sm font-semibold">New Reservation Request</DialogTitle>
+          <DialogTitle className="text-sm font-semibold">{tx.title}</DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-3 pt-1">
           {/* Guest Name */}
           <div className="space-y-1.5">
-            <Label className="text-xs font-medium text-gray-700">Guest Name *</Label>
+            <Label className="text-xs font-medium text-gray-700">{tx.guestName}</Label>
             <Input
               value={guestName}
               onChange={(e) => setGuestName(e.target.value)}
@@ -187,7 +182,7 @@ export function CreateReservationModal({ open, onClose, onCreated }: CreateReser
           {/* Email + Phone */}
           <div className="grid grid-cols-2 gap-2">
             <div className="space-y-1.5">
-              <Label className="text-xs font-medium text-gray-700">Email *</Label>
+              <Label className="text-xs font-medium text-gray-700">{tx.email}</Label>
               <Input
                 type="email"
                 value={guestEmail}
@@ -198,7 +193,7 @@ export function CreateReservationModal({ open, onClose, onCreated }: CreateReser
               />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs font-medium text-gray-700">Phone</Label>
+              <Label className="text-xs font-medium text-gray-700">{tx.phone}</Label>
               <Input
                 type="tel"
                 value={guestPhone}
@@ -212,7 +207,7 @@ export function CreateReservationModal({ open, onClose, onCreated }: CreateReser
           {/* Party Size + Category */}
           <div className="grid grid-cols-2 gap-2">
             <div className="space-y-1.5">
-              <Label className="text-xs font-medium text-gray-700">Party Size *</Label>
+              <Label className="text-xs font-medium text-gray-700">{tx.partySize}</Label>
               <Input
                 type="number"
                 min={1}
@@ -224,10 +219,10 @@ export function CreateReservationModal({ open, onClose, onCreated }: CreateReser
               />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs font-medium text-gray-700">Category</Label>
+              <Label className="text-xs font-medium text-gray-700">{tx.category}</Label>
               <Select value={category} onValueChange={(v) => v && setCategory(v)}>
                 <SelectTrigger className="h-8 text-sm">
-                  <SelectValue placeholder={categories.length === 0 ? 'Loading...' : 'Any'} />
+                  <SelectValue placeholder={categories.length === 0 ? tx.loadingCats : tx.any} />
                 </SelectTrigger>
                 <SelectContent>
                   {categories.map((c) => (
@@ -240,7 +235,7 @@ export function CreateReservationModal({ open, onClose, onCreated }: CreateReser
 
           {/* Duration */}
           <div className="space-y-1.5">
-            <Label className="text-xs font-medium text-gray-700">Duration</Label>
+            <Label className="text-xs font-medium text-gray-700">{tx.duration}</Label>
             <Select value={String(duration)} onValueChange={(v) => v && setDuration(Number(v))}>
               <SelectTrigger className="h-8 text-sm">
                 <SelectValue />
@@ -256,7 +251,7 @@ export function CreateReservationModal({ open, onClose, onCreated }: CreateReser
           {/* Date + Time */}
           <div className="grid grid-cols-2 gap-2">
             <div className="space-y-1.5">
-              <Label className="text-xs font-medium text-gray-700">Date *</Label>
+              <Label className="text-xs font-medium text-gray-700">{tx.date}</Label>
               <Input
                 type="date"
                 value={date}
@@ -266,7 +261,7 @@ export function CreateReservationModal({ open, onClose, onCreated }: CreateReser
               />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs font-medium text-gray-700">Time *</Label>
+              <Label className="text-xs font-medium text-gray-700">{tx.time}</Label>
               <Select value={time} onValueChange={(v) => v && setTime(v)}>
                 <SelectTrigger className="h-8 text-sm">
                   <SelectValue />
@@ -283,8 +278,8 @@ export function CreateReservationModal({ open, onClose, onCreated }: CreateReser
           {/* Table preference */}
           <div className="space-y-1.5">
             <Label className="text-xs font-medium text-gray-700">
-              Table preference
-              <span className="text-zinc-400 font-normal ml-1">— optional</span>
+              {tx.tablePreference}
+              <span className="text-zinc-400 font-normal ml-1">{tx.optional}</span>
             </Label>
             <Select
               value={preferredTableId}
@@ -293,9 +288,9 @@ export function CreateReservationModal({ open, onClose, onCreated }: CreateReser
             >
               <SelectTrigger className="h-8 text-sm">
                 <SelectValue placeholder={
-                  loadingTables ? 'Checking availability...' :
-                  availableTables.length === 0 ? 'Set date, time & guests first' :
-                  'Any available table'
+                  loadingTables ? tx.checkAvail :
+                  availableTables.length === 0 ? tx.setDetails :
+                  tx.anyTable
                 } />
               </SelectTrigger>
               <SelectContent>
@@ -310,7 +305,7 @@ export function CreateReservationModal({ open, onClose, onCreated }: CreateReser
 
           {/* Special Requests */}
           <div className="space-y-1.5">
-            <Label className="text-xs font-medium text-gray-700">Special Requests</Label>
+            <Label className="text-xs font-medium text-gray-700">{tx.specialRequests}</Label>
             <Textarea
               rows={2}
               value={specialRequests}
@@ -323,9 +318,9 @@ export function CreateReservationModal({ open, onClose, onCreated }: CreateReser
           {/* Message to restaurant */}
           <div className="space-y-1.5">
             <Label className="text-xs font-medium text-gray-700">
-              Message to restaurant
+              {tx.message}
               <span className="text-zinc-400 font-normal ml-1">
-                — Simulates a note sent by the guest during booking
+                {tx.messageHint}
               </span>
             </Label>
             <Textarea
@@ -349,7 +344,7 @@ export function CreateReservationModal({ open, onClose, onCreated }: CreateReser
               className="flex-1 h-8 text-sm bg-brand-primary hover:bg-brand-primary/90 text-white"
               disabled={loading}
             >
-              {loading ? 'Creating...' : 'Create Request'}
+              {loading ? tx.creating : tx.createRequest}
             </Button>
             <Button
               type="button"
@@ -358,7 +353,7 @@ export function CreateReservationModal({ open, onClose, onCreated }: CreateReser
               onClick={handleClose}
               disabled={loading}
             >
-              Cancel
+              {tx.cancel}
             </Button>
           </div>
         </form>

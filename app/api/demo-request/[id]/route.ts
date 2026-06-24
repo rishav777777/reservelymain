@@ -28,9 +28,12 @@ export async function PATCH(
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     )
 
+    const updatePayload: Record<string, unknown> = { status }
+    if (status === 'approved') updatePayload.approved_at = new Date().toISOString()
+
     const { data: updatedRequest, error } = await admin
       .from('demo_requests')
-      .update({ status })
+      .update(updatePayload)
       .eq('id', id)
       .select()
       .single()
@@ -59,9 +62,8 @@ export async function PATCH(
             role:          'owner',
           },
         })
-      } catch (inviteErr) {
-        // Non-blocking: status is already saved; log but don't fail the response
-        console.error('[demo-request] Invitation failed:', inviteErr)
+      } catch {
+        // Non-blocking: status is already saved; invitation failure does not roll back approval
       }
     }
 

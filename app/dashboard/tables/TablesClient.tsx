@@ -10,6 +10,8 @@ import { Button } from '@/components/ui/button'
 import { Plus, ImageIcon } from 'lucide-react'
 import { toast } from 'sonner'
 import { TableDetailPanel } from '@/components/dashboard/tables/TableDetailPanel'
+import { useLang } from '@/components/i18n/LanguageProvider'
+import { dashboardT } from '@/lib/i18n/dashboardT'
 
 const CATEGORIES = ['Indoor', 'Outdoor', 'VIP', 'Bar']
 
@@ -20,6 +22,9 @@ interface TablesClientProps {
 }
 
 export function TablesClient({ tables: initial, restaurantId, userRole }: TablesClientProps) {
+  const { lang } = useLang()
+  const tx = dashboardT[lang].tablesPage
+
   const canManage = userRole !== 'staff'
   const [tables, setTables] = useState(initial)
   const [selectedTable, setSelectedTable] = useState<RestaurantTable | null>(null)
@@ -77,7 +82,7 @@ export function TablesClient({ tables: initial, restaurantId, userRole }: Tables
       setName('')
       setCapacity(2)
       setCategory('Indoor')
-      toast.success(`Table ${data.name} added`)
+      toast.success(`${tx.modal.add} ${data.name}`)
     } catch {
       toast.error('Failed to add table')
     } finally {
@@ -89,15 +94,15 @@ export function TablesClient({ tables: initial, restaurantId, userRole }: Tables
     <div className="p-5">
       <div className="flex items-center justify-between mb-5">
         <div>
-          <h1 className="text-sm font-semibold text-gray-900">Tables</h1>
-          <p className="text-xs text-gray-400 mt-0.5">{tables.length} tables configured</p>
+          <h1 className="text-sm font-semibold text-gray-900">{tx.title}</h1>
+          <p className="text-xs text-gray-400 mt-0.5">{tx.subtitle(tables.length)}</p>
         </div>
         {canManage && (
           <button
             onClick={() => setAddOpen(true)}
             className="flex items-center gap-1.5 bg-brand-primary hover:bg-brand-primary/90 text-white text-xs font-medium px-3 py-1.5 rounded-md transition-colors"
           >
-            <Plus size={12} /> Add Table
+            <Plus size={12} /> {tx.addTable}
           </button>
         )}
       </div>
@@ -110,7 +115,7 @@ export function TablesClient({ tables: initial, restaurantId, userRole }: Tables
             <div key={cat} className="mb-6">
               <div className="flex items-center gap-2 mb-2 px-1">
                 <h3 className="text-xs font-semibold text-zinc-700 uppercase tracking-wider">{cat}</h3>
-                <span className="text-xs text-zinc-400">{stats.active}/{stats.total} tables · {stats.capacity} seats</span>
+                <span className="text-xs text-zinc-400">{tx.areaStats(stats.active, stats.total, stats.capacity)}</span>
               </div>
               <div className="space-y-1.5">
                 {areaTables
@@ -137,10 +142,10 @@ export function TablesClient({ tables: initial, restaurantId, userRole }: Tables
                         >
                           {t.name}
                         </button>
-                        <span className="text-gray-600 w-20 shrink-0">{t.capacity} guests</span>
+                        <span className="text-gray-600 w-20 shrink-0">{tx.guests(t.capacity)}</span>
                         <span className="flex-1">
                           <span className={`px-2 py-0.5 rounded-full font-medium ${t.is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>
-                            {t.is_active ? 'Active' : 'Inactive'}
+                            {t.is_active ? tx.active : tx.inactive}
                           </span>
                         </span>
                       </div>
@@ -164,11 +169,11 @@ export function TablesClient({ tables: initial, restaurantId, userRole }: Tables
       <Dialog open={addOpen} onOpenChange={(v) => !v && setAddOpen(false)}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
-            <DialogTitle className="text-sm font-semibold">Add Table</DialogTitle>
+            <DialogTitle className="text-sm font-semibold">{tx.modal.title}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleAdd} className="space-y-3 pt-2">
             <div className="space-y-1.5">
-              <Label className="text-xs font-medium text-gray-700">Name</Label>
+              <Label className="text-xs font-medium text-gray-700">{tx.modal.name}</Label>
               <Input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
@@ -178,7 +183,7 @@ export function TablesClient({ tables: initial, restaurantId, userRole }: Tables
               />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs font-medium text-gray-700">Capacity</Label>
+              <Label className="text-xs font-medium text-gray-700">{tx.modal.capacity}</Label>
               <Input
                 type="number"
                 min={1}
@@ -190,7 +195,7 @@ export function TablesClient({ tables: initial, restaurantId, userRole }: Tables
               />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs font-medium text-gray-700">Category</Label>
+              <Label className="text-xs font-medium text-gray-700">{tx.modal.category}</Label>
               <Select value={category} onValueChange={(v) => v && setCategory(v)}>
                 <SelectTrigger className="h-8 text-sm">
                   <SelectValue />
@@ -208,7 +213,7 @@ export function TablesClient({ tables: initial, restaurantId, userRole }: Tables
                 className="flex-1 h-8 text-sm bg-brand-primary hover:bg-brand-primary/90 text-white"
                 disabled={saving}
               >
-                {saving ? 'Saving...' : 'Add Table'}
+                {saving ? tx.modal.saving : tx.modal.add}
               </Button>
               <Button
                 type="button"
@@ -216,7 +221,7 @@ export function TablesClient({ tables: initial, restaurantId, userRole }: Tables
                 className="h-8 text-sm"
                 onClick={() => setAddOpen(false)}
               >
-                Cancel
+                {tx.modal.cancel}
               </Button>
             </div>
           </form>

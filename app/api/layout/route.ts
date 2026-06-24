@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
     const [{ data: zones }, { data: tables }] = await Promise.all([
       admin
         .from('floor_zones')
-        .select('id, label, x, y, w, h')
+        .select('id, label, x, y, w, h, is_seasonal, season_start, season_end, is_open')
         .eq('restaurant_id', restaurantId)
         .order('created_at'),
       admin
@@ -68,22 +68,42 @@ export async function POST(request: NextRequest) {
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     )
 
-    // ── Zones: full replace (no FK constraints) ──────────────────────────
-    await admin.from('floor_zones').delete().eq('restaurant_id', restaurantId)
+    // ── Zones: upsert preserving IDs (so table zone_id FKs survive) ────────
+    type ZonePayload = {
+      id: string; label: string; x: number; y: number; w: number; h: number
+      is_seasonal: boolean; season_start: string | null; season_end: string | null; is_open: boolean
+    }
 
     if (zones?.length) {
-      const zoneRows = zones.map((z: {
-        label: string; x: number; y: number; w: number; h: number
-      }) => ({
+      const incomingIds = (zones as ZonePayload[]).map(z => z.id)
+
+      // Delete zones no longer present
+      const { data: existing } = await admin
+        .from('floor_zones').select('id').eq('restaurant_id', restaurantId)
+      const toDelete = (existing ?? []).map((e: { id: string }) => e.id).filter((id: string) => !incomingIds.includes(id))
+      if (toDelete.length) {
+        await admin.from('floor_zones').delete().in('id', toDelete)
+      }
+
+      const zoneRows = (zones as ZonePayload[]).map(z => ({
+        id:            z.id,
         restaurant_id: restaurantId,
-        label: z.label,
-        x: Math.round(z.x),
-        y: Math.round(z.y),
-        w: Math.round(z.w),
-        h: Math.round(z.h),
+        label:         z.label,
+        x:             Math.round(z.x),
+        y:             Math.round(z.y),
+        w:             Math.round(z.w),
+        h:             Math.round(z.h),
+        is_seasonal:   z.is_seasonal  ?? false,
+        season_start:  z.season_start || null,
+        season_end:    z.season_end   || null,
+        is_open:       z.is_open      ?? true,
       }))
-      const { error: zoneErr } = await admin.from('floor_zones').insert(zoneRows)
+      const { error: zoneErr } = await admin
+        .from('floor_zones')
+        .upsert(zoneRows, { onConflict: 'id' })
       if (zoneErr) return NextResponse.json({ error: zoneErr.message }, { status: 500 })
+    } else {
+      await admin.from('floor_zones').delete().eq('restaurant_id', restaurantId)
     }
 
     // ── Tables: upsert (preserve existing IDs so reservations stay linked) ─

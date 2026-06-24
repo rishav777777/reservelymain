@@ -39,9 +39,6 @@ export default async function AnalyticsPage() {
   })
   const reservationsPerDay = Object.entries(dateBuckets).map(([date, v]) => ({
     date,
-    label: new Date(date + 'T12:00:00').toLocaleDateString('en-GB', {
-      weekday: 'short', day: 'numeric',
-    }),
     online: v.online,
     walkIn: v.walkIn,
   }))

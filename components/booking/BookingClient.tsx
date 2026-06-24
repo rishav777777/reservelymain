@@ -1,37 +1,45 @@
 'use client';
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ChevronLeft } from "lucide-react";
-import { Screen1 } from "@/components/figma/Screen1";
-import { Screen2 } from "@/components/figma/Screen2";
-import { Screen3 } from "@/components/figma/Screen3";
-import { type Lang, t } from "@/components/figma/translations";
+import { Screen1 } from "@/components/booking/Screen1";
+import { Screen2 } from "@/components/booking/Screen2";
+import { Screen3 } from "@/components/booking/Screen3";
+import { type Lang, t } from "@/components/booking/translations";
 
 type Screen = "date" | "table" | "details";
 const STEPS: Screen[] = ["date", "table", "details"];
 
-const GLASS: React.CSSProperties = {
-  background: "rgba(255,255,255,0.25)",
-  backdropFilter: "blur(40px) saturate(180%)",
-  WebkitBackdropFilter: "blur(40px) saturate(180%)",
-  border: "1.5px solid rgba(255,255,255,0.50)",
-  boxShadow: "0 8px 32px rgba(0,0,0,0.06), 0 1px 0 rgba(255,255,255,0.7) inset",
-};
-
 interface BookingClientProps {
-  restaurantId:   string
-  restaurantName: string
+  restaurantId:        string
+  restaurantSlug:      string
+  restaurantName:      string
+  closedDays?:         Set<number>
+  advanceBookingDays?: number
+  openingHoursMap?:    Record<number, { open: string; last: string | null }>
+  maxPartySize?:       number
+  demoMode?:           boolean
 }
 
-export function BookingClient({ restaurantId, restaurantName }: BookingClientProps) {
+export function BookingClient({
+  restaurantId, restaurantSlug, restaurantName,
+  closedDays, advanceBookingDays, openingHoursMap, maxPartySize,
+  demoMode = false,
+}: BookingClientProps) {
   const [screen,    setScreen]    = useState<Screen>("date");
   const [lang,      setLang]      = useState<Lang>("EN");
+
+  useEffect(() => {
+    const stored = localStorage.getItem('reservely-lang')
+    if (stored === 'DE') setLang('DE')
+  }, []);
   const [dateStr,   setDateStr]   = useState("");
   const [rawDate,   setRawDate]   = useState("");
   const [timeStr,   setTimeStr]   = useState("");
   const [tableId,   setTableId]   = useState("");
   const [tableName, setTableName] = useState("");
-  const [seats,     setSeats]     = useState(4);
+  const [partySize, setPartySize] = useState(2);
+  const [sessionId] = useState(() => crypto.randomUUID());
 
   const tr          = t[lang];
   const currentStep = STEPS.indexOf(screen);
@@ -43,79 +51,109 @@ export function BookingClient({ restaurantId, restaurantName }: BookingClientPro
 
   return (
     <div style={{
-      minHeight: "100vh", width: "100%",
-      display: "flex", alignItems: "flex-start", justifyContent: "center",
-      background: "#F4F6F4", position: "relative", overflow: "hidden",
+      minHeight: "100vh",
+      background: "linear-gradient(155deg, #071a0e 0%, #0D472B 45%, #0a3020 100%)",
+      position: "relative",
+      overflow: "hidden",
     }}>
       <style>{`
-        @keyframes orbFloat1 { 0%,100%{transform:translate(0,0) scale(1)} 50%{transform:translate(16px,-20px) scale(1.03)} }
-        @keyframes orbFloat2 { 0%,100%{transform:translate(0,0) scale(1)} 50%{transform:translate(-12px,18px) scale(1.04)} }
-        @keyframes orbFloat3 { 0%,100%{transform:translate(0,0) scale(1)} 50%{transform:translate(18px,12px) scale(1.03)} }
+        /* dot grid texture */
+        .bk-bg::before {
+          content: '';
+          position: fixed; inset: 0; pointer-events: none; z-index: 0;
+          background-image: radial-gradient(circle, rgba(255,255,255,0.045) 1px, transparent 1px);
+          background-size: 26px 26px;
+        }
+        /* glow orbs */
+        .bk-orb1 {
+          position: fixed; top: -180px; left: -140px;
+          width: 480px; height: 480px; border-radius: 50%;
+          background: radial-gradient(circle at 40% 40%, rgba(52,211,153,0.12) 0%, transparent 70%);
+          pointer-events: none; z-index: 0;
+          animation: orbf1 14s ease-in-out infinite;
+        }
+        .bk-orb2 {
+          position: fixed; bottom: -160px; right: -120px;
+          width: 400px; height: 400px; border-radius: 50%;
+          background: radial-gradient(circle at 55% 55%, rgba(13,71,43,0.25) 0%, transparent 70%);
+          pointer-events: none; z-index: 0;
+          animation: orbf2 17s ease-in-out infinite;
+        }
+        @keyframes orbf1 { 0%,100%{transform:translate(0,0)} 50%{transform:translate(20px,-24px)} }
+        @keyframes orbf2 { 0%,100%{transform:translate(0,0)} 50%{transform:translate(-18px,20px)} }
 
-        .book-shell {
-          width: 100%; min-height: 100vh;
+        .bk-shell {
+          position: relative; z-index: 1;
+          min-height: 100vh;
           display: flex; flex-direction: column; align-items: center;
+          padding: 0 16px 48px;
           overflow-y: auto; overflow-x: hidden; scrollbar-width: none;
-          padding: 0 16px; box-sizing: border-box; position: relative; z-index: 1;
         }
-        .book-content {
-          width: 100%; max-width: 520px;
-          display: flex; flex-direction: column; align-items: center; flex: 1;
+        .bk-shell::-webkit-scrollbar { display: none; }
+        .bk-content {
+          width: 100%; max-width: 500px;
+          display: flex; flex-direction: column; align-items: center;
         }
-        @media (min-width: 768px) {
-          .book-shell { align-items: center; padding: 40px 24px; min-height: 100vh; }
-          .book-content {
-            max-width: 480px;
-            background: rgba(255,255,255,0.45);
-            border: 1.5px solid rgba(255,255,255,0.6);
-            border-radius: 32px;
-            box-shadow: 0 32px 80px rgba(0,0,0,0.10), 0 2px 0 rgba(255,255,255,0.8) inset;
-            padding: 0 28px 40px; min-height: auto;
-          }
-        }
-        @media (max-width: 767px) {
-          .book-shell { padding: 0 22px; }
-          .book-content { max-width: 100%; }
+
+        @media (min-width: 640px) {
+          .bk-shell { padding: 32px 24px 56px; }
         }
       `}</style>
 
-      {/* Orbs */}
-      <div style={{ position:"fixed", top:"-200px", left:"-180px", width:"560px", height:"560px", borderRadius:"50%", background:"radial-gradient(circle at 40% 40%, rgba(13,71,43,0.13) 0%, rgba(13,71,43,0.04) 55%, transparent 75%)", pointerEvents:"none", animation:"orbFloat1 10s ease-in-out infinite" }}/>
-      <div style={{ position:"fixed", bottom:"-200px", right:"-180px", width:"500px", height:"500px", borderRadius:"50%", background:"radial-gradient(circle at 50% 50%, rgba(13,71,43,0.11) 0%, rgba(13,71,43,0.03) 55%, transparent 75%)", pointerEvents:"none", animation:"orbFloat2 13s ease-in-out infinite" }}/>
-      <div style={{ position:"fixed", top:"-40px", right:"-60px", width:"320px", height:"320px", borderRadius:"50%", background:"radial-gradient(circle at 45% 45%, rgba(255,255,255,0.55) 0%, transparent 70%)", pointerEvents:"none", animation:"orbFloat3 14s ease-in-out infinite" }}/>
+      <div className="bk-bg" />
+      <div className="bk-orb1" />
+      <div className="bk-orb2" />
 
-      <div className="book-shell">
-        <div className="book-content">
+      <div className="bk-shell">
+        <div className="bk-content">
 
-          {/* HEADER */}
-          <div style={{ width:"100%", display:"flex", flexDirection:"column", alignItems:"center", paddingTop:"32px", paddingBottom:"4px", flexShrink:0 }}>
-            <div style={{ textAlign:"center", userSelect:"none" }}>
+          {/* ── HEADER ─────────────────────────────────────────────── */}
+          <div style={{ width: "100%", paddingTop: "36px", paddingBottom: "8px", textAlign: "center" }}>
+            {demoMode && (
               <div style={{
-                fontFamily: "'DM Serif Display', serif",
-                fontSize: "28px",
-                letterSpacing: "0.08em",
-                textTransform: "uppercase",
-                color: "#1C231F",
-                lineHeight: 1,
-                textAlign: "center",
+                display: "inline-flex", alignItems: "center", gap: "6px",
+                background: "rgba(251,191,36,0.10)", border: "1px solid rgba(251,191,36,0.25)",
+                borderRadius: "100px", padding: "4px 12px", marginBottom: "10px",
               }}>
-                {restaurantName}
+                <div style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#FCD34D", boxShadow: "0 0 6px rgba(252,211,77,0.6)" }} />
+                <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "10px", fontWeight: 700, color: "rgba(252,211,77,0.80)", letterSpacing: "0.08em", textTransform: "uppercase" }}>
+                  Demo mode — no reservation saved
+                </span>
               </div>
-            </div>
+            )}
+            <h1 style={{
+              fontFamily: "'DM Serif Display', serif",
+              fontSize: "26px",
+              letterSpacing: "0.06em",
+              color: "#fff",
+              margin: 0,
+            }}>
+              {restaurantName}
+            </h1>
 
-            {/* Language toggle */}
-            <div style={{ marginTop:"10px", display:"inline-flex", ...GLASS, borderRadius:"100px", padding:"4px", gap:"2px", position:"relative", overflow:"hidden" }}>
-              {(["DE","EN"] as Lang[]).map(l => {
+            {/* Lang toggle */}
+            <div style={{
+              marginTop: "12px",
+              display: "inline-flex",
+              background: "rgba(255,255,255,0.07)",
+              border: "1px solid rgba(255,255,255,0.12)",
+              borderRadius: "100px",
+              padding: "3px",
+              gap: "2px",
+            }}>
+              {(["DE", "EN"] as Lang[]).map(l => {
                 const active = lang === l;
                 return (
                   <button key={l} onClick={() => setLang(l)} style={{
-                    padding:"7px 20px", borderRadius:"100px",
-                    fontFamily:"'DM Sans',sans-serif", fontSize:"12px", fontWeight: active ? 700 : 500,
-                    background: active ? "linear-gradient(135deg,#0D472B 0%,#0B3D24 100%)" : "transparent",
-                    color: active ? "#fff" : "rgba(28,35,31,0.5)",
-                    border: active ? "1px solid rgba(13,71,43,0.5)" : "1px solid transparent",
-                    boxShadow: active ? "0 4px 14px rgba(13,71,43,0.3), 0 1px 0 rgba(255,255,255,0.2) inset" : "none",
-                    cursor:"pointer", transition:"all .2s ease", letterSpacing:"0.06em",
+                    padding: "6px 18px", borderRadius: "100px",
+                    fontFamily: "'DM Sans', sans-serif", fontSize: "11px",
+                    fontWeight: active ? 700 : 500,
+                    letterSpacing: "0.06em",
+                    background: active ? "rgba(255,255,255,0.12)" : "transparent",
+                    color: active ? "#fff" : "rgba(255,255,255,0.35)",
+                    border: active ? "1px solid rgba(255,255,255,0.20)" : "1px solid transparent",
+                    cursor: "pointer",
+                    transition: "all .18s ease",
                   }}>
                     {l}
                   </button>
@@ -124,42 +162,74 @@ export function BookingClient({ restaurantId, restaurantName }: BookingClientPro
             </div>
           </div>
 
-          {/* STEP BAR */}
-          <div style={{ width:"100%", padding:"18px 0 12px", flexShrink:0 }}>
-            <div style={{ ...GLASS, borderRadius:"22px", padding:"14px 18px", display:"flex", alignItems:"center", justifyContent:"space-between", position:"relative", overflow:"hidden" }}>
-              <div style={{ display:"flex", alignItems:"center", gap:"10px", position:"relative" }}>
+          {/* ── STEP BAR ───────────────────────────────────────────── */}
+          <div style={{ width: "100%", padding: "14px 0 10px" }}>
+            <div style={{
+              background: "rgba(255,255,255,0.06)",
+              border: "1px solid rgba(255,255,255,0.10)",
+              borderRadius: "18px",
+              padding: "12px 16px",
+              display: "flex", alignItems: "center", justifyContent: "space-between",
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                 {currentStep > 0 && (
-                  <button onClick={goBack} style={{ width:"34px", height:"34px", borderRadius:"50%", ...GLASS, display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", flexShrink:0 }}>
-                    <ChevronLeft size={16} color="#1C231F" strokeWidth={2.2}/>
+                  <button onClick={goBack} style={{
+                    width: "32px", height: "32px", borderRadius: "50%",
+                    background: "rgba(255,255,255,0.08)",
+                    border: "1px solid rgba(255,255,255,0.12)",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    cursor: "pointer",
+                  }}>
+                    <ChevronLeft size={15} color="#fff" strokeWidth={2.5} />
                   </button>
                 )}
                 <div>
-                  <p style={{ fontFamily:"'DM Sans',sans-serif", fontSize:"10px", color:"rgba(28,35,31,0.45)", textTransform:"uppercase", letterSpacing:"0.08em", margin:0 }}>
+                  <p style={{
+                    fontFamily: "'DM Sans', sans-serif",
+                    fontSize: "10px", color: "rgba(255,255,255,0.35)",
+                    textTransform: "uppercase", letterSpacing: "0.08em", margin: 0,
+                  }}>
                     {tr.step} {currentStep + 1} {tr.of} 3
                   </p>
-                  <p style={{ fontFamily:"'DM Serif Display',serif", fontSize:"19px", color:"#1C231F", letterSpacing:"-0.02em", margin:"2px 0 0" }}>
+                  <p style={{
+                    fontFamily: "'DM Serif Display', serif",
+                    fontSize: "17px", color: "#fff",
+                    letterSpacing: "-0.01em", margin: "2px 0 0",
+                  }}>
                     {tr.stepLabels[currentStep]}
                   </p>
                 </div>
               </div>
-              <div style={{ display:"flex", gap:"5px", alignItems:"center" }}>
+
+              {/* Progress dots */}
+              <div style={{ display: "flex", gap: "5px", alignItems: "center" }}>
                 {STEPS.map((_, i) => (
                   <div key={i} style={{
-                    width: i === currentStep ? "20px" : "6px", height:"6px", borderRadius:"100px",
-                    background: i <= currentStep ? "linear-gradient(90deg,#0D472B,#0B3D24)" : "rgba(13,71,43,0.18)",
-                    transition:"width .3s ease",
-                    boxShadow: i === currentStep ? "0 0 8px rgba(13,71,43,0.35)" : "none",
-                  }}/>
+                    width: i === currentStep ? "22px" : "6px",
+                    height: "6px",
+                    borderRadius: "100px",
+                    background: i <= currentStep
+                      ? "linear-gradient(90deg, #34D399, #059669)"
+                      : "rgba(255,255,255,0.12)",
+                    transition: "width .3s ease",
+                    boxShadow: i === currentStep ? "0 0 8px rgba(52,211,153,0.5)" : "none",
+                  }} />
                 ))}
               </div>
             </div>
           </div>
 
-          {/* CONTENT */}
-          <div style={{ width:"100%", flex:1, paddingBottom:"32px" }}>
+          {/* ── SCREEN CONTENT ─────────────────────────────────────── */}
+          <div style={{ width: "100%", flex: 1 }}>
             {screen === "date" && (
               <Screen1
                 lang={lang}
+                closedDays={closedDays}
+                advanceBookingDays={advanceBookingDays}
+                openingHoursMap={openingHoursMap}
+                partySize={partySize}
+                onPartySizeChange={setPartySize}
+                maxPartySize={maxPartySize}
                 onNext={(d, from, till, raw) => {
                   setDateStr(d);
                   setRawDate(raw);
@@ -175,11 +245,12 @@ export function BookingClient({ restaurantId, restaurantName }: BookingClientPro
                 rawDate={rawDate}
                 timeStr={timeStr}
                 restaurantId={restaurantId}
+                partySize={partySize}
+                demoMode={demoMode}
                 onBack={() => setScreen("date")}
-                onNext={(tid, tname, s) => {
+                onNext={(tid, tname) => {
                   setTableId(tid);
                   setTableName(tname);
-                  setSeats(s);
                   setScreen("details");
                 }}
               />
@@ -192,8 +263,11 @@ export function BookingClient({ restaurantId, restaurantName }: BookingClientPro
                 timeStr={timeStr}
                 tableId={tableId}
                 tableName={tableName}
-                seats={seats}
+                seats={partySize}
                 restaurantId={restaurantId}
+                restaurantSlug={restaurantSlug}
+                sessionId={sessionId}
+                demoMode={demoMode}
                 onBack={() => setScreen("table")}
               />
             )}

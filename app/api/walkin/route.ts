@@ -1,10 +1,15 @@
 import { createClient } from '@/lib/supabase/server'
 import { allocateTable, getOverlappingTableIds } from '@/lib/table-allocator'
+import { logAction } from '@/lib/audit'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function POST(request: NextRequest) {
   const body = await request.json()
-  const { party_size, category, duration_minutes = 60 } = body as { party_size: number; category: string; duration_minutes?: number }
+  const { party_size, category, duration_minutes = 60 } = body as {
+    party_size: number
+    category: string
+    duration_minutes?: number
+  }
 
   if (!party_size || party_size < 1) {
     return NextResponse.json({ error: 'Invalid party size' }, { status: 400 })
@@ -12,17 +17,26 @@ export async function POST(request: NextRequest) {
 
   const supabase = await createClient()
 
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   const { data: profile } = await supabase
     .from('profiles')
-    .select('restaurant_id')
+    .select('restaurant_id, role, full_name')
+    .eq('id', user.id)
     .single()
 
   if (!profile?.restaurant_id) {
-    return NextResponse.json({ error: 'Profile not found' }, { status: 401 })
+    return NextResponse.json({ error: 'Profile not found' }, { status: 403 })
+  }
+
+  // Only owner and manager can create walk-ins
+  if (profile.role === 'staff') {
+    return NextResponse.json({ error: 'Forbidden — staff cannot create walk-ins' }, { status: 403 })
   }
 
   const restaurantId = profile.restaurant_id
-  const today = new Date().toISOString().split('T')[0]
+  const today   = new Date().toISOString().split('T')[0]
   const nowTime = new Date().toTimeString().slice(0, 8)
 
   const { data: allTables } = await supabase
@@ -39,12 +53,11 @@ export async function POST(request: NextRequest) {
     .in('status', ['confirmed', 'arrived'])
 
   const occupiedIds = getOverlappingTableIds(existing ?? [], nowTime, duration_minutes)
-
-  const allocated = allocateTable(allTables ?? [], party_size, category ?? null, occupiedIds)
+  const allocated   = allocateTable(allTables ?? [], party_size, category ?? null, occupiedIds)
 
   if (!allocated) {
     return NextResponse.json(
-      { error: `No available tables for ${party_size} guests in ${category}` },
+      { error: `No available tables for ${party_size} guests${category ? ` in ${category}` : ''}` },
       { status: 409 }
     )
   }
@@ -54,26 +67,34 @@ export async function POST(request: NextRequest) {
   const { data: reservation, error } = await supabase
     .from('reservations')
     .insert({
-      restaurant_id: restaurantId,
-      table_id: allocated.id,
-      reference_code: refCode,
-      guest_name: 'Walk-in Guest',
-      guest_email: 'walkin@reservely.local',
+      restaurant_id:    restaurantId,
+      table_id:         allocated.id,
+      reference_code:   refCode,
+      guest_name:       'Walk-in Guest',
+      guest_email:      'walkin@reservely.local',
       party_size,
       reservation_date: today,
       reservation_time: nowTime,
       category,
       duration_minutes,
-      status: 'confirmed',
-      is_walk_in: true,
+      status:           'confirmed',
+      is_walk_in:       true,
+      source:           'walk_in',
     })
     .select('*, restaurant_tables(name, capacity, category)')
     .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  return NextResponse.json(
-    { reservation, table: allocated },
-    { status: 201 }
-  )
+  logAction({
+    restaurant_id: restaurantId,
+    actor_id:      user.id,
+    actor_name:    profile.full_name ?? null,
+    action:        'reservation.walkin',
+    target_type:   'reservation',
+    target_id:     reservation.id,
+    metadata: { reference_code: refCode, party_size, table: allocated.name },
+  }).catch(() => {})
+
+  return NextResponse.json({ reservation, table: allocated }, { status: 201 })
 }

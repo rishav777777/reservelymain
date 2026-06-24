@@ -9,6 +9,8 @@ import { MessageThread } from './MessageThread'
 import { format } from 'date-fns'
 import { Calendar, Users, Mail, Phone, UtensilsCrossed } from 'lucide-react'
 import { toast } from 'sonner'
+import { useLang } from '@/components/i18n/LanguageProvider'
+import { dashboardT } from '@/lib/i18n/dashboardT'
 
 interface ReservationDetailPanelProps {
   reservation: Reservation | null
@@ -29,6 +31,8 @@ export function ReservationDetailPanel({
   const [messages, setMessages] = useState<Message[]>([])
   const [loading, setLoading] = useState(false)
   const [loadingMessages, setLoadingMessages] = useState(false)
+  const { lang } = useLang()
+  const tx = dashboardT[lang].reservationDetail
 
   useEffect(() => {
     setCurrent(reservation)
@@ -120,32 +124,30 @@ export function ReservationDetailPanel({
               <Calendar size={12} className="text-gray-400" />
               {dateFormatted} · {timeFormatted}
               <span className="text-xs text-zinc-500">
-                · {current.duration_minutes >= 60
-                  ? `${current.duration_minutes / 60}h duration`
-                  : `${current.duration_minutes}min duration`}
+                · {tx.duration(current.duration_minutes)}
               </span>
             </p>
             <p className="flex items-center gap-2 text-xs text-gray-700">
               <Users size={12} className="text-gray-400" />
-              {current.party_size} guests · {current.category ?? '—'} · Table {tableName}
+              {tx.guests(current.party_size)} · {current.category ?? '—'} · {tx.table} {tableName}
             </p>
           </section>
 
           {/* Requests */}
           {(current.special_requests || current.menu_preference || current.notes) && (
             <section className="space-y-1.5">
-              <p className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Requests</p>
+              <p className="text-xs font-semibold text-gray-600 uppercase tracking-wider">{tx.requests}</p>
               {current.special_requests && (
                 <div className="flex gap-2 text-xs text-gray-600">
                   <UtensilsCrossed size={12} className="text-gray-400 mt-0.5 shrink-0" />
-                  <span>Special: {current.special_requests}</span>
+                  <span>{tx.special} {current.special_requests}</span>
                 </div>
               )}
               {current.menu_preference && (
-                <p className="text-xs text-gray-600 pl-4">Menu: {current.menu_preference}</p>
+                <p className="text-xs text-gray-600 pl-4">{tx.menu} {current.menu_preference}</p>
               )}
               {current.notes && (
-                <p className="text-xs text-gray-600 pl-4">Notes: {current.notes}</p>
+                <p className="text-xs text-gray-600 pl-4">{tx.notes} {current.notes}</p>
               )}
             </section>
           )}
@@ -162,10 +164,10 @@ export function ReservationDetailPanel({
           {/* Message thread */}
           <section className="flex-1 min-h-[200px] flex flex-col">
             <p className="text-xs font-semibold text-gray-600 uppercase tracking-wider mb-3">
-              Messages
+              {tx.messages}
             </p>
             {loadingMessages ? (
-              <p className="text-xs text-gray-400">Loading messages...</p>
+              <p className="text-xs text-gray-400">{tx.loadingMessages}</p>
             ) : (
               <MessageThread
                 key={current.id}

@@ -11,6 +11,10 @@ const makeTable = (overrides: Partial<RestaurantTable>): RestaurantTable => ({
   is_active: true,
   image_url: null,
   image_urls: [],
+  x: null,
+  y: null,
+  w: null,
+  h: null,
   created_at: '2024-01-01',
   ...overrides,
 })

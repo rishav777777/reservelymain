@@ -39,14 +39,13 @@ export async function POST(
         )
       }
     } catch {
-      console.warn('[ratelimit] Redis unavailable, skipping rate limit check')
+      // Fails open — rate limit unavailable
     }
 
     let body: { base64?: unknown; mimeType?: unknown; fileName?: unknown }
     try {
       body = await request.json()
-    } catch (parseErr) {
-      console.error('[image-upload] Failed to parse request body:', parseErr)
+    } catch {
       return NextResponse.json({ error: 'Request body must be valid JSON' }, { status: 400 })
     }
 
@@ -66,27 +65,26 @@ export async function POST(
     let buffer: Buffer
     try {
       buffer = Buffer.from(base64, 'base64')
-    } catch (bufErr) {
-      console.error('[image-upload] Failed to decode base64:', bufErr)
+    } catch {
       return NextResponse.json({ error: 'Invalid base64 data' }, { status: 400 })
     }
 
-    // Verify actual file type from bytes — never trust the client-supplied mimeType
+    const MAX_BYTES = 5 * 1024 * 1024 // 5MB server-side hard limit
+    if (buffer.length > MAX_BYTES) {
+      return NextResponse.json({ error: 'File exceeds the 5MB limit' }, { status: 413 })
+    }
+
     const detectedType = await fileTypeFromBuffer(buffer)
     const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/webp']
 
     if (!detectedType || !allowedMimeTypes.includes(detectedType.mime)) {
-      console.error('[image-upload] File type check failed:', detectedType?.mime ?? 'unknown')
       return NextResponse.json(
         { error: 'File must be a JPEG, PNG or WebP image' },
         { status: 400 }
       )
     }
 
-    // Use the detected MIME type for storage, not the client-supplied one
     const verifiedMimeType = detectedType.mime
-
-    console.log(`[image-upload] Uploading restaurant-table-images/${storagePath} (${buffer.length} bytes, ${verifiedMimeType})`)
 
     const adminClient = createAdminClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -98,15 +96,12 @@ export async function POST(
       .upload(storagePath, buffer, { contentType: verifiedMimeType, upsert: true })
 
     if (uploadError) {
-      console.error('[image-upload] Storage upload failed:', uploadError)
       return NextResponse.json({ error: uploadError.message }, { status: 500 })
     }
 
     const { data: { publicUrl } } = adminClient.storage
       .from('restaurant-table-images')
       .getPublicUrl(storagePath)
-
-    console.log(`[image-upload] Upload successful → ${publicUrl}`)
 
     const { data: tableRow } = await adminClient
       .from('restaurant_tables')
@@ -123,14 +118,12 @@ export async function POST(
       .eq('id', tableId)
 
     if (dbError) {
-      console.error('[image-upload] DB update failed:', dbError)
       return NextResponse.json({ error: dbError.message }, { status: 500 })
     }
 
     return NextResponse.json({ image_url: publicUrl, image_urls: updatedUrls }, { status: 200 })
 
   } catch (err) {
-    console.error('[image-upload] Unhandled error:', err)
     return NextResponse.json(
       { error: err instanceof Error ? err.message : 'Internal server error' },
       { status: 500 }

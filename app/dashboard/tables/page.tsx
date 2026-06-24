@@ -8,7 +8,7 @@ export default async function TablesPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: profile } = await supabase.from('profiles').select('restaurant_id, role').single()
+  const { data: profile } = await supabase.from('profiles').select('restaurant_id, role').eq('id', user.id).single()
   const restaurantId = profile?.restaurant_id ?? ''
   const userRole = (profile?.role ?? 'staff') as 'owner' | 'manager' | 'staff'
 

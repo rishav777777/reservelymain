@@ -1,0 +1,5 @@
+// Phase 3 — Daily summary (triggered by pg_cron)
+import { NextResponse } from 'next/server'
+export async function POST() {
+  return NextResponse.json({ error: 'Not yet implemented' }, { status: 501 })
+}

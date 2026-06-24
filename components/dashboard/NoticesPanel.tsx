@@ -5,6 +5,8 @@ import { Notice } from '@/types'
 import { formatDistanceToNow } from 'date-fns'
 import { Plus, StickyNote } from 'lucide-react'
 import { toast } from 'sonner'
+import { useLang } from '@/components/i18n/LanguageProvider'
+import { dashboardT } from '@/lib/i18n/dashboardT'
 
 interface NoticesPanelProps {
   notices: Notice[]
@@ -12,23 +14,19 @@ interface NoticesPanelProps {
 
 export function NoticesPanel({ notices: initialNotices }: NoticesPanelProps) {
   const [notices, setNotices] = useState(initialNotices)
-  const [adding, setAdding] = useState(false)
-  const [text, setText] = useState('')
+  const [adding, setAdding]   = useState(false)
+  const [text, setText]       = useState('')
+  const { lang } = useLang()
+  const tx = dashboardT[lang].noticesPanel
 
   async function handleAdd() {
     if (!text.trim()) return
-
     const res = await fetch('/api/notices', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ content: text.trim() }),
     })
-
-    if (!res.ok) {
-      toast.error('Failed to add notice')
-      return
-    }
-
+    if (!res.ok) { toast.error('Failed to add notice'); return }
     const data = await res.json()
     setNotices([data, ...notices])
     setText('')
@@ -38,12 +36,12 @@ export function NoticesPanel({ notices: initialNotices }: NoticesPanelProps) {
   return (
     <div>
       <div className="flex items-center justify-between mb-3">
-        <p className="text-xs font-semibold text-zinc-700">Notices</p>
+        <p className="text-xs font-semibold text-zinc-700">{tx.title}</p>
         <button
           onClick={() => setAdding(!adding)}
           className="flex items-center gap-1 text-xs text-zinc-400 hover:text-zinc-700 transition-colors duration-150"
         >
-          <Plus size={11} /> Add
+          <Plus size={11} /> {tx.add}
         </button>
       </div>
 
@@ -52,7 +50,7 @@ export function NoticesPanel({ notices: initialNotices }: NoticesPanelProps) {
           <textarea
             className="w-full text-xs border border-zinc-200 rounded-md px-2.5 py-2 resize-none focus:outline-none focus:border-zinc-400 bg-white transition-colors duration-150"
             rows={2}
-            placeholder="Add a notice..."
+            placeholder={tx.placeholder}
             value={text}
             onChange={(e) => setText(e.target.value)}
           />
@@ -61,13 +59,13 @@ export function NoticesPanel({ notices: initialNotices }: NoticesPanelProps) {
               onClick={handleAdd}
               className="text-xs bg-zinc-900 text-white px-2.5 py-1 rounded-md hover:bg-zinc-700 transition-colors duration-150"
             >
-              Save
+              {tx.save}
             </button>
             <button
               onClick={() => { setAdding(false); setText('') }}
               className="text-xs text-zinc-400 px-2.5 py-1 rounded-md hover:text-zinc-700 transition-colors duration-150"
             >
-              Cancel
+              {tx.cancel}
             </button>
           </div>
         </div>
@@ -79,7 +77,7 @@ export function NoticesPanel({ notices: initialNotices }: NoticesPanelProps) {
             <div className="w-7 h-7 rounded-full bg-zinc-100 flex items-center justify-center mb-2">
               <StickyNote className="w-3.5 h-3.5 text-zinc-400" />
             </div>
-            <p className="text-xs text-zinc-400">No notices</p>
+            <p className="text-xs text-zinc-400">{tx.empty}</p>
           </div>
         )}
         {notices.map((n) => (

@@ -20,6 +20,13 @@ export const resourceLimiter = new Ratelimit({
   prefix: 'rl:resource',
 })
 
+// 60 requests per 10 minutes per IP — for table hold heartbeats (renews every ~30s)
+export const holdLimiter = new Ratelimit({
+  redis,
+  limiter: Ratelimit.slidingWindow(60, '10 m'),
+  prefix: 'rl:hold',
+})
+
 // Returns the client IP from a Next.js request
 export function getClientIp(request: Request): string {
   return (

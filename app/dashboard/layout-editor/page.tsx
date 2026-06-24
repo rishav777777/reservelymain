@@ -1,8 +1,10 @@
 'use client'
 
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Plus, Trash2, Save, Layers } from 'lucide-react'
+import { Plus, Trash2, Save, Layers, Leaf, ToggleLeft, ToggleRight } from 'lucide-react'
+import { useLang } from '@/components/i18n/LanguageProvider'
+import { dashboardT } from '@/lib/i18n/dashboardT'
 
 interface Zone {
   id: string
@@ -11,6 +13,16 @@ interface Zone {
   y: number
   w: number
   h: number
+  is_seasonal:  boolean
+  season_start: string
+  season_end:   string
+  is_open:      boolean
+}
+
+function isInSeason(z: Zone): boolean {
+  if (!z.is_seasonal || !z.season_start || !z.season_end) return true
+  const today = new Date().toISOString().slice(0, 10)
+  return today >= z.season_start && today <= z.season_end
 }
 
 interface TableItem {
@@ -33,14 +45,19 @@ const GLASS_PANEL: React.CSSProperties = {
 }
 
 export default function LayoutEditorPage() {
+  const { lang } = useLang()
+  const tx = dashboardT[lang].layout
+
   const canvasWidth = 760
   const canvasHeight = 500
 
+  const ZONE_DEFAULTS = { is_seasonal: false, season_start: '', season_end: '', is_open: true }
+
   const [zones, setZones] = useState<Zone[]>([
-    { id: '1', label: 'INDOOR',  x: 20,  y: 20,  w: 420, h: 240 },
-    { id: '2', label: 'BAR',     x: 460, y: 20,  w: 280, h: 240 },
-    { id: '3', label: 'OUTDOOR', x: 20,  y: 280, w: 220, h: 200 },
-    { id: '4', label: 'VIP',     x: 260, y: 280, w: 480, h: 200 },
+    { id: '1', label: 'INDOOR',  x: 20,  y: 20,  w: 420, h: 240, ...ZONE_DEFAULTS },
+    { id: '2', label: 'BAR',     x: 460, y: 20,  w: 280, h: 240, ...ZONE_DEFAULTS },
+    { id: '3', label: 'OUTDOOR', x: 20,  y: 280, w: 220, h: 200, ...ZONE_DEFAULTS },
+    { id: '4', label: 'VIP',     x: 260, y: 280, w: 480, h: 200, ...ZONE_DEFAULTS },
   ])
 
   const [tables, setTables] = useState<TableItem[]>([
@@ -83,9 +100,13 @@ export default function LayoutEditorPage() {
 
       if (data.zones?.length > 0) {
         setZones(data.zones.map((z: any) => ({
-          id:    z.id,
-          label: z.label,
+          id:           z.id,
+          label:        z.label,
           x: z.x, y: z.y, w: z.w, h: z.h,
+          is_seasonal:  z.is_seasonal  ?? false,
+          season_start: z.season_start ?? '',
+          season_end:   z.season_end   ?? '',
+          is_open:      z.is_open      ?? true,
         })))
       }
 
@@ -110,12 +131,25 @@ export default function LayoutEditorPage() {
     const id = crypto.randomUUID()
     setZones([
       ...zones,
-      { id, label: newZoneLabel.toUpperCase(), x: 80, y: 80, w: 200, h: 140 },
+      { id, label: newZoneLabel.toUpperCase(), x: 80, y: 80, w: 200, h: 140,
+        is_seasonal: false, season_start: '', season_end: '', is_open: true },
     ])
-    newZoneLabel && setNewZoneLabel('')
+    setNewZoneLabel('')
   }
 
-  const handleAddTable = (e: React.FormEvent) => {
+  function toggleZoneOpen(id: string) {
+    setZones(prev => prev.map(z => z.id === id ? { ...z, is_open: !z.is_open } : z))
+  }
+
+  function toggleSeasonal(id: string) {
+    setZones(prev => prev.map(z => z.id === id ? { ...z, is_seasonal: !z.is_seasonal } : z))
+  }
+
+  function setSeasonDate(id: string, field: 'season_start' | 'season_end', value: string) {
+    setZones(prev => prev.map(z => z.id === id ? { ...z, [field]: value } : z))
+  }
+
+  const handleAddTable = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     if (!newTableName.trim()) return
     const id = crypto.randomUUID()
@@ -169,8 +203,8 @@ export default function LayoutEditorPage() {
     <div className="p-8 max-w-7xl mx-auto space-y-6">
       <div className="flex items-center justify-between border-b border-zinc-200 pb-5">
         <div>
-          <h1 className="text-2xl font-serif text-zinc-900 font-medium tracking-tight">Interactive Layout Workspace</h1>
-          <p className="text-xs text-zinc-500 mt-1">Design sections, customize boundaries freely, and drag elements on the grid.</p>
+          <h1 className="text-2xl font-serif text-zinc-900 font-medium tracking-tight">{tx.title}</h1>
+          <p className="text-xs text-zinc-500 mt-1">{tx.subtitle}</p>
         </div>
         <button
           onClick={async () => {
@@ -184,17 +218,17 @@ export default function LayoutEditorPage() {
               })
               const body = await res.json()
               if (!res.ok) { setSaveMsg(`Error: ${body.error}`); return }
-              setSaveMsg('Saved successfully')
+              setSaveMsg(tx.saved)
               setTimeout(() => setSaveMsg(null), 3000)
             } catch {
-              setSaveMsg('Save failed')
+              setSaveMsg(tx.saveFailed)
             } finally {
               setSaving(false)
             }
           }}
           className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold bg-emerald-950 text-white shadow-md hover:bg-emerald-900 transition-all"
         >
-          <Save size={14} /> {saving ? 'Saving…' : saveMsg ?? 'Save Configurations'}
+          <Save size={14} /> {saving ? tx.saving : saveMsg ?? tx.save}
         </button>
       </div>
 
@@ -202,30 +236,30 @@ export default function LayoutEditorPage() {
         <div className="xl:col-span-1 space-y-5">
           <div style={GLASS_PANEL} className="p-5 rounded-[24px]">
             <h2 className="text-xs font-bold text-zinc-700 tracking-wider uppercase mb-3 flex items-center gap-1.5">
-              <Layers size={13} className="text-zinc-500" /> 1. Custom Sections
+              <Layers size={13} className="text-zinc-500" /> {tx.sections}
             </h2>
             <div className="space-y-3">
-              <input 
-                type="text" 
-                placeholder="e.g., Garden, Terrace" 
+              <input
+                type="text"
+                placeholder={tx.sectionPh}
                 value={newZoneLabel} 
                 onChange={e => setNewZoneLabel(e.target.value)}
                 className="w-full bg-white/70 border border-zinc-200 rounded-xl px-3 py-1.5 text-xs focus:outline-none"
               />
               <button onClick={handleAddZone} className="w-full py-2 bg-zinc-900 text-white rounded-xl text-xs font-medium flex items-center justify-center gap-1.5 hover:bg-zinc-800 transition">
-                <Plus size={13} /> Add Free Section
+                <Plus size={13} /> {tx.addSection}
               </button>
             </div>
           </div>
 
           <div style={GLASS_PANEL} className="p-5 rounded-[24px]">
             <h2 className="text-xs font-bold text-zinc-700 tracking-wider uppercase mb-3 flex items-center gap-1.5">
-              <Plus size={13} className="text-zinc-500" /> 2. Add Tables
+              <Plus size={13} className="text-zinc-500" /> {tx.addTablesTitle}
             </h2>
             <form onSubmit={handleAddTable} className="space-y-3">
-              <input 
-                type="text" 
-                placeholder="Table Name (e.g., T5)" 
+              <input
+                type="text"
+                placeholder={tx.tableNamePh}
                 value={newTableName} 
                 onChange={e => setNewTableName(e.target.value)}
                 className="w-full bg-white/70 border border-zinc-200 rounded-xl px-3 py-1.5 text-xs focus:outline-none"
@@ -242,16 +276,62 @@ export default function LayoutEditorPage() {
                 className="w-full bg-white/70 border border-zinc-200 rounded-xl px-3 py-1.5 text-xs focus:outline-none"
               />
               <button type="submit" className="w-full py-2 bg-zinc-900 text-white rounded-xl text-xs font-medium flex items-center justify-center gap-1.5 hover:bg-zinc-800 transition">
-                <Plus size={13} /> Add Table Block
+                <Plus size={13} /> {tx.addTableBlock}
               </button>
             </form>
           </div>
 
-          <div style={GLASS_PANEL} className="p-4 rounded-[24px] max-h-[200px] overflow-y-auto space-y-1.5 text-[11px]">
+          <div style={GLASS_PANEL} className="p-4 rounded-[24px] max-h-[320px] overflow-y-auto space-y-1.5 text-[11px]">
             {zones.map(z => (
-              <div key={z.id} className="flex items-center justify-between bg-white/50 px-2.5 py-1.5 rounded-lg border border-zinc-100 font-medium text-zinc-700">
-                <span>Section: {z.label}</span>
-                <button onClick={() => setZones(zones.filter(x => x.id !== z.id))} className="text-zinc-400 hover:text-red-600"><Trash2 size={12}/></button>
+              <div key={z.id} className={`rounded-lg border px-2.5 py-2 space-y-1.5 ${z.is_open ? 'bg-white/50 border-zinc-100' : 'bg-amber-50/60 border-amber-200'}`}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 font-medium text-zinc-700">
+                    {z.is_seasonal && <Leaf size={10} className="text-emerald-600" />}
+                    <span>{z.label}</span>
+                    {!z.is_open && <span className="text-amber-600 font-semibold">({tx.closed})</span>}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => toggleZoneOpen(z.id)}
+                      title={z.is_open ? tx.markClosed : tx.markOpen}
+                      className="text-zinc-400 hover:text-zinc-700"
+                    >
+                      {z.is_open
+                        ? <ToggleRight size={14} className="text-emerald-600" />
+                        : <ToggleLeft  size={14} className="text-amber-500" />
+                      }
+                    </button>
+                    <button
+                      onClick={() => toggleSeasonal(z.id)}
+                      title={z.is_seasonal ? tx.removeSeasonal : tx.markSeasonal}
+                      className={z.is_seasonal ? 'text-emerald-600' : 'text-zinc-300 hover:text-emerald-500'}
+                    >
+                      <Leaf size={11} />
+                    </button>
+                    <button onClick={() => setZones(zones.filter(x => x.id !== z.id))} className="text-zinc-400 hover:text-red-600">
+                      <Trash2 size={11} />
+                    </button>
+                  </div>
+                </div>
+                {z.is_seasonal && (
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="date"
+                      value={z.season_start}
+                      onChange={e => setSeasonDate(z.id, 'season_start', e.target.value)}
+                      className="flex-1 bg-white border border-zinc-200 rounded-md px-1.5 py-0.5 text-[10px] focus:outline-none"
+                      placeholder="Start"
+                    />
+                    <span className="text-zinc-400">→</span>
+                    <input
+                      type="date"
+                      value={z.season_end}
+                      onChange={e => setSeasonDate(z.id, 'season_end', e.target.value)}
+                      className="flex-1 bg-white border border-zinc-200 rounded-md px-1.5 py-0.5 text-[10px] focus:outline-none"
+                      placeholder="End"
+                    />
+                  </div>
+                )}
               </div>
             ))}
             {tables.map(t => (
@@ -268,7 +348,7 @@ export default function LayoutEditorPage() {
             <div style={{ width: canvasWidth, height: canvasHeight, display: 'flex',
               alignItems: 'center', justifyContent: 'center',
               background: '#f9fafb', border: '1px solid #e4e7eb', borderRadius: 16 }}>
-              <p className="text-xs text-zinc-400">Loading layout…</p>
+              <p className="text-xs text-zinc-400">{tx.loadingLayout}</p>
             </div>
           ) : (
           <svg
@@ -289,19 +369,25 @@ export default function LayoutEditorPage() {
             <rect width="100%" height="100%" fill="url(#dot-mesh)" />
 
             {/* Render Section Areas dynamically */}
-            {zones.map((zone) => (
-              <g key={zone.id}>
-                <rect
-                  x={zone.x} y={zone.y} width={zone.w} height={zone.h} rx="12"
-                  fill="rgba(255,255,255,0.25)" stroke="rgba(13,71,43,0.15)" strokeWidth="1.5" strokeDasharray="4 4"
-                  className="cursor-move"
-                  onMouseDown={(e) => startDrag(e, 'zone', zone.id, zone.x, zone.y)}
-                />
-                <text x={zone.x + 12} y={zone.y + 18} style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '9px', fontWeight: 800, fill: 'rgba(13,71,43,0.45)', textTransform: 'uppercase', pointerEvents: 'none' }}>
-                  {zone.label}
-                </text>
-              </g>
-            ))}
+            {zones.map((zone) => {
+              const closed = !zone.is_open || (zone.is_seasonal && !isInSeason(zone))
+              const fill   = closed ? 'rgba(251,191,36,0.12)' : 'rgba(255,255,255,0.25)'
+              const stroke = closed ? 'rgba(217,119,6,0.45)'  : 'rgba(13,71,43,0.15)'
+              const labelFill = closed ? 'rgba(161,98,7,0.7)' : 'rgba(13,71,43,0.45)'
+              return (
+                <g key={zone.id}>
+                  <rect
+                    x={zone.x} y={zone.y} width={zone.w} height={zone.h} rx="12"
+                    fill={fill} stroke={stroke} strokeWidth="1.5" strokeDasharray="4 4"
+                    className="cursor-move"
+                    onMouseDown={(e) => startDrag(e, 'zone', zone.id, zone.x, zone.y)}
+                  />
+                  <text x={zone.x + 12} y={zone.y + 18} style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '9px', fontWeight: 800, fill: labelFill, textTransform: 'uppercase', pointerEvents: 'none' }}>
+                    {zone.label}{closed ? ' ✕' : ''}
+                  </text>
+                </g>
+              )
+            })}
 
             {/* Render Free Move Tables blocks matching layout-2 preview design elements dimensions */}
             {tables.map((tb) => {

@@ -8,6 +8,8 @@ import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { X, ImageIcon, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
+import { useLang } from '@/components/i18n/LanguageProvider'
+import { dashboardT } from '@/lib/i18n/dashboardT'
 
 interface TableDetailPanelProps {
   table: RestaurantTable | null
@@ -42,6 +44,8 @@ export function TableDetailPanel({
   const [saving, setSaving]       = useState(false)
   const [uploading, setUploading] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const { lang } = useLang()
+  const tx = dashboardT[lang].tableDetail
 
   useEffect(() => {
     if (table) {
@@ -142,7 +146,7 @@ export function TableDetailPanel({
             <SheetTitle className="text-sm font-semibold text-gray-900">{table.name}</SheetTitle>
             <span className="text-xs text-zinc-500 bg-zinc-100 px-2 py-0.5 rounded">{table.category}</span>
             <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${table.is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>
-              {table.is_active ? 'Active' : 'Inactive'}
+              {table.is_active ? tx.active : tx.inactive}
             </span>
           </div>
         </SheetHeader>
@@ -150,7 +154,7 @@ export function TableDetailPanel({
         <div className="flex-1 overflow-y-auto px-5 py-5 space-y-6">
           {/* Details */}
           <section className="space-y-3">
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Details</p>
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{tx.details}</p>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label className="text-xs font-medium text-gray-700">Name</Label>
@@ -162,7 +166,7 @@ export function TableDetailPanel({
                 />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs font-medium text-gray-700">Capacity</Label>
+                <Label className="text-xs font-medium text-gray-700">{tx.capacity}</Label>
                 <Input
                   type="number"
                   min={1}
@@ -174,7 +178,7 @@ export function TableDetailPanel({
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs font-medium text-gray-700">Category</Label>
+              <Label className="text-xs font-medium text-gray-700">{tx.category}</Label>
               <Input
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
@@ -191,7 +195,7 @@ export function TableDetailPanel({
                   onChange={(e) => setIsActive(e.target.checked)}
                   className="w-3.5 h-3.5"
                 />
-                <Label htmlFor="panel-is-active" className="text-xs text-gray-700 cursor-pointer">Active</Label>
+                <Label htmlFor="panel-is-active" className="text-xs text-gray-700 cursor-pointer">{tx.activeLabel}</Label>
               </div>
             )}
             {canManage && (
@@ -200,14 +204,14 @@ export function TableDetailPanel({
                 disabled={saving}
                 className="w-full h-8 text-sm bg-brand-primary hover:bg-brand-primary/90 text-white"
               >
-                {saving ? 'Saving...' : 'Save changes'}
+                {saving ? tx.saving : tx.saveChanges}
               </Button>
             )}
           </section>
 
           {/* Photos */}
           <section className="space-y-3">
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Photos</p>
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{tx.photos}</p>
             {imageUrls.length > 0 ? (
               <div className="grid grid-cols-3 gap-2">
                 {imageUrls.map((url, index) => (
@@ -233,7 +237,7 @@ export function TableDetailPanel({
             ) : (
               <div className="flex flex-col items-center gap-2 py-6 bg-zinc-50 rounded-lg border border-dashed border-zinc-200">
                 <ImageIcon size={20} className="text-zinc-300" />
-                <p className="text-xs text-zinc-400">No photos yet</p>
+                <p className="text-xs text-zinc-400">{tx.noPhotos}</p>
               </div>
             )}
             {canManage && (
@@ -249,7 +253,7 @@ export function TableDetailPanel({
                     e.target.value = ''
                   }}
                 />
-                <span className="text-xs text-zinc-500">{uploading ? 'Uploading...' : '+ Add photo'}</span>
+                <span className="text-xs text-zinc-500">{uploading ? tx.uploading : tx.addPhoto}</span>
               </label>
             )}
           </section>
@@ -263,24 +267,24 @@ export function TableDetailPanel({
                   className="flex items-center gap-1.5 text-xs text-red-500 hover:text-red-700 transition-colors"
                 >
                   <Trash2 size={12} />
-                  Delete table
+                  {tx.deleteTable}
                 </button>
               ) : (
                 <div className="space-y-2">
-                  <p className="text-xs text-red-600 font-medium">Delete &ldquo;{table.name}&rdquo;? This cannot be undone.</p>
+                  <p className="text-xs text-red-600 font-medium">{tx.confirmDelete(table.name)}</p>
                   <div className="flex gap-2">
                     <Button
                       onClick={handleDelete}
                       className="h-8 text-xs bg-red-600 hover:bg-red-700 text-white px-3"
                     >
-                      Yes, delete
+                      {tx.yesDelete}
                     </Button>
                     <Button
                       variant="outline"
                       onClick={() => setConfirmDelete(false)}
                       className="h-8 text-xs px-3"
                     >
-                      Cancel
+                      {tx.cancel}
                     </Button>
                   </div>
                 </div>

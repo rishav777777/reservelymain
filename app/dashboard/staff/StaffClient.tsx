@@ -11,12 +11,8 @@ import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 import { Shield, UserPlus, Plus } from 'lucide-react'
-
-const ROLE_LABELS: Record<UserRole, string> = {
-  owner:   'Owner',
-  manager: 'Manager',
-  staff:   'Staff',
-}
+import { useLang } from '@/components/i18n/LanguageProvider'
+import { dashboardT } from '@/lib/i18n/dashboardT'
 
 const ROLE_BADGE: Record<UserRole, string> = {
   owner:   'bg-violet-100 text-violet-700',
@@ -36,6 +32,9 @@ function memberInitials(member: StaffMember): string {
 }
 
 export function StaffClient({ team: initialTeam, pending: initialPending, currentUserId }: UsersClientProps) {
+  const { lang } = useLang()
+  const tx = dashboardT[lang].team
+
   const [team, setTeam]       = useState(Array.isArray(initialTeam)    ? initialTeam    : [])
   const [pending, setPending] = useState(Array.isArray(initialPending) ? initialPending : [])
   const [updatingId, setUpdatingId] = useState<string | null>(null)
@@ -82,7 +81,7 @@ export function StaffClient({ team: initialTeam, pending: initialPending, curren
       setTeam(prev => prev.map(m =>
         m.id === memberId ? { ...m, is_active: !currentlyActive } : m
       ))
-      toast.success(currentlyActive ? 'User deactivated' : 'User activated')
+      toast.success(currentlyActive ? tx.deactivate : tx.activate)
     } catch {
       toast.error('Failed')
     } finally {
@@ -106,7 +105,7 @@ export function StaffClient({ team: initialTeam, pending: initialPending, curren
         setPending(prev => prev.filter(p => p.id !== userId))
         setTeam(prev => [...prev, { ...added, role: 'staff' }])
       }
-      toast.success('User added to your restaurant')
+      toast.success(tx.addToTeam)
     } catch {
       toast.error('Failed to add user')
     } finally {
@@ -122,7 +121,7 @@ export function StaffClient({ team: initialTeam, pending: initialPending, curren
       if (!res.ok) { toast.error(body.error ?? 'Delete failed'); return }
       setTeam(prev => prev.filter(m => m.id !== memberId))
       setConfirmDeleteId(null)
-      toast.success('User deleted')
+      toast.success(tx.delete)
     } catch {
       toast.error('Delete failed')
     } finally {
@@ -147,7 +146,7 @@ export function StaffClient({ team: initialTeam, pending: initialPending, curren
       setTeam(prev => [...prev, body])
       setCreateOpen(false)
       setNewName(''); setNewEmail(''); setNewPassword(''); setNewRole('staff')
-      toast.success(`${newName} added to your restaurant`)
+      toast.success(tx.modal.create)
     } catch {
       toast.error('Failed to create user')
     } finally {
@@ -155,21 +154,23 @@ export function StaffClient({ team: initialTeam, pending: initialPending, curren
     }
   }
 
+  const ROLE_LABELS = tx.roles
+
   return (
     <div className="p-5">
       <div className="flex items-center justify-between mb-5">
         <div>
-          <h1 className="text-sm font-semibold text-gray-900">Users & Roles</h1>
+          <h1 className="text-sm font-semibold text-gray-900">{tx.title}</h1>
           <p className="text-xs text-gray-400 mt-0.5">
-            {team.length} team member{team.length !== 1 ? 's' : ''}
-            {pending.length > 0 && ` · ${pending.length} pending`}
+            {tx.subtitle(team.length)}
+            {pending.length > 0 && ` ${tx.pendingCount(pending.length)}`}
           </p>
         </div>
         <button
           onClick={() => setCreateOpen(true)}
           className="flex items-center gap-1.5 bg-brand-primary hover:bg-brand-primary/90 text-white text-xs font-medium px-3 py-1.5 rounded-md transition-colors"
         >
-          <Plus size={12} /> Create user
+          <Plus size={12} /> {tx.createUser}
         </button>
       </div>
 
@@ -189,8 +190,8 @@ export function StaffClient({ team: initialTeam, pending: initialPending, curren
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-medium text-zinc-900 truncate">
                   {member.full_name ?? 'Unnamed'}
-                  {isSelf && <span className="text-zinc-400 font-normal ml-1">(you)</span>}
-                  {!isActive && <span className="text-zinc-400 font-normal ml-1">(Inactive)</span>}
+                  {isSelf && <span className="text-zinc-400 font-normal ml-1">{tx.you}</span>}
+                  {!isActive && <span className="text-zinc-400 font-normal ml-1">{tx.inactive}</span>}
                 </p>
                 <p className="text-xs text-zinc-400 truncate">{member.email ?? '—'}</p>
               </div>
@@ -226,23 +227,23 @@ export function StaffClient({ team: initialTeam, pending: initialPending, curren
                           : 'text-emerald-600 hover:text-emerald-800'
                       }`}
                     >
-                      {isActive ? 'Deactivate' : 'Activate'}
+                      {isActive ? tx.deactivate : tx.activate}
                     </button>
                     {confirmDeleteId === member.id ? (
                       <div className="flex items-center gap-1.5">
-                        <span className="text-xs text-red-600">Delete?</span>
+                        <span className="text-xs text-red-600">{tx.deleteConfirm}</span>
                         <button
                           onClick={() => handleDeleteUser(member.id)}
                           disabled={deleting}
                           className="text-xs text-red-600 font-medium hover:text-red-800 transition-colors"
                         >
-                          {deleting ? '...' : 'Yes'}
+                          {deleting ? '...' : tx.yes}
                         </button>
                         <button
                           onClick={() => setConfirmDeleteId(null)}
                           className="text-xs text-zinc-400 hover:text-zinc-700 transition-colors"
                         >
-                          No
+                          {tx.no}
                         </button>
                       </div>
                     ) : (
@@ -251,7 +252,7 @@ export function StaffClient({ team: initialTeam, pending: initialPending, curren
                         disabled={updatingId === member.id}
                         className="text-xs text-zinc-300 hover:text-red-500 transition-colors"
                       >
-                        Delete
+                        {tx.delete}
                       </button>
                     )}
                   </>
@@ -266,7 +267,7 @@ export function StaffClient({ team: initialTeam, pending: initialPending, curren
       {pending.length > 0 && (
         <div className="mb-6">
           <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2 px-1">
-            Pending — waiting for activation
+            {tx.pendingSection}
           </p>
           <div className="space-y-2">
             {pending.map((member) => (
@@ -289,7 +290,7 @@ export function StaffClient({ team: initialTeam, pending: initialPending, curren
                   className="h-7 text-xs px-3 bg-brand-primary hover:bg-brand-primary/90 text-white shrink-0"
                 >
                   <UserPlus size={11} className="mr-1" />
-                  {updatingId === member.id ? 'Adding...' : 'Add to team'}
+                  {updatingId === member.id ? tx.adding : tx.addToTeam}
                 </Button>
               </div>
             ))}
@@ -302,13 +303,10 @@ export function StaffClient({ team: initialTeam, pending: initialPending, curren
         <div className="flex items-start gap-2">
           <Shield size={13} className="text-zinc-400 mt-0.5 shrink-0" />
           <div className="text-xs text-zinc-500 space-y-1">
-            <p><span className="font-medium text-violet-700">Owner</span> — full access including user management, analytics, and settings</p>
-            <p><span className="font-medium text-blue-700">Manager</span> — reservations, tables, analytics, and settings</p>
-            <p><span className="font-medium text-zinc-700">Staff</span> — reservations and walk-ins only</p>
-            <p className="pt-2 text-zinc-400 border-t border-zinc-200 mt-1">
-              Create users directly with the button above, or have them sign up themselves
-              through the login page (they appear in Pending).
-            </p>
+            <p><span className="font-medium text-violet-700">{ROLE_LABELS.owner}</span> — {tx.legend.owner}</p>
+            <p><span className="font-medium text-blue-700">{ROLE_LABELS.manager}</span> — {tx.legend.manager}</p>
+            <p><span className="font-medium text-zinc-700">{ROLE_LABELS.staff}</span> — {tx.legend.staff}</p>
+            <p className="pt-2 text-zinc-400 border-t border-zinc-200 mt-1">{tx.legend.note}</p>
           </div>
         </div>
       </div>
@@ -317,11 +315,11 @@ export function StaffClient({ team: initialTeam, pending: initialPending, curren
       <Dialog open={createOpen} onOpenChange={(v) => !v && setCreateOpen(false)}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
-            <DialogTitle className="text-sm font-semibold">Create user</DialogTitle>
+            <DialogTitle className="text-sm font-semibold">{tx.modal.title}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleCreateUser} className="space-y-3 pt-2">
             <div className="space-y-1.5">
-              <Label className="text-xs font-medium text-gray-700">Full name</Label>
+              <Label className="text-xs font-medium text-gray-700">{tx.modal.fullName}</Label>
               <Input
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
@@ -331,7 +329,7 @@ export function StaffClient({ team: initialTeam, pending: initialPending, curren
               />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs font-medium text-gray-700">Email</Label>
+              <Label className="text-xs font-medium text-gray-700">{tx.modal.email}</Label>
               <Input
                 type="email"
                 value={newEmail}
@@ -342,7 +340,7 @@ export function StaffClient({ team: initialTeam, pending: initialPending, curren
               />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs font-medium text-gray-700">Password</Label>
+              <Label className="text-xs font-medium text-gray-700">{tx.modal.password}</Label>
               <Input
                 type="password"
                 value={newPassword}
@@ -354,7 +352,7 @@ export function StaffClient({ team: initialTeam, pending: initialPending, curren
               />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs font-medium text-gray-700">Role</Label>
+              <Label className="text-xs font-medium text-gray-700">{tx.modal.role}</Label>
               <Select value={newRole} onValueChange={(v) => v && setNewRole(v as UserRole)}>
                 <SelectTrigger className="h-8 text-sm">
                   <SelectValue />
@@ -374,7 +372,7 @@ export function StaffClient({ team: initialTeam, pending: initialPending, curren
                 className="flex-1 h-8 text-sm bg-brand-primary hover:bg-brand-primary/90 text-white"
                 disabled={creating}
               >
-                {creating ? 'Creating...' : 'Create user'}
+                {creating ? tx.modal.creating : tx.modal.create}
               </Button>
               <Button
                 type="button"
@@ -382,7 +380,7 @@ export function StaffClient({ team: initialTeam, pending: initialPending, curren
                 className="h-8 text-sm"
                 onClick={() => setCreateOpen(false)}
               >
-                Cancel
+                {tx.modal.cancel}
               </Button>
             </div>
           </form>

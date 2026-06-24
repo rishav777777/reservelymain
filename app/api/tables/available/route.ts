@@ -16,9 +16,28 @@ export async function GET(request: NextRequest) {
 
   const supabase = await createClient()
 
+  // Fetch active zones so we can exclude tables in closed/out-of-season zones
+  const { data: zones } = await supabase
+    .from('floor_zones')
+    .select('id, is_seasonal, season_start, season_end, is_open')
+
+  // A zone is unavailable when:
+  //   - is_open = false, OR
+  //   - is_seasonal = true AND date is outside [season_start, season_end]
+  const closedZoneIds = new Set<string>(
+    (zones ?? []).filter(z => {
+      if (!z.is_open) return true
+      if (z.is_seasonal) {
+        if (z.season_start && date < z.season_start) return true
+        if (z.season_end   && date > z.season_end)   return true
+      }
+      return false
+    }).map(z => z.id)
+  )
+
   let tableQuery = supabase
     .from('restaurant_tables')
-    .select('*')
+    .select('*, zone_id')
     .eq('is_active', true)
     .gte('capacity', partySize)
     .order('category')
@@ -26,6 +45,11 @@ export async function GET(request: NextRequest) {
 
   if (category) tableQuery = tableQuery.eq('category', category)
   const { data: allTables } = await tableQuery
+
+  // Filter out tables that belong to a closed/out-of-season zone
+  const eligibleTables = (allTables ?? []).filter(
+    t => !t.zone_id || !closedZoneIds.has(t.zone_id)
+  )
 
   const { data: existing } = await supabase
     .from('reservations')
@@ -44,7 +68,7 @@ export async function GET(request: NextRequest) {
     duration
   )
 
-  const available = (allTables ?? []).filter((t) => !occupiedIds.includes(t.id))
+  const available = eligibleTables.filter((t) => !occupiedIds.includes(t.id))
 
   return NextResponse.json({ tables: available })
 }

@@ -5,27 +5,33 @@ import { createClient } from '@/lib/supabase/client'
 import { GlassCalendar, type ReservationSummary } from '@/components/dashboard/GlassCalendar'
 import { DayFeedCard, type Reservation } from '@/components/dashboard/DayFeedCard'
 import { CalendarDays, Leaf } from 'lucide-react'
+import { useLang } from '@/components/i18n/LanguageProvider'
+import { dashboardT } from '@/lib/i18n/dashboardT'
 
 const now = new Date()
 const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
 
-function formatDate(dateStr: string) {
+function formatDate(dateStr: string, locale: string) {
   const [yr, mo, dy] = dateStr.split('-').map(Number)
-  return new Date(yr, mo - 1, dy).toLocaleDateString('de-AT', {
+  return new Date(yr, mo - 1, dy).toLocaleDateString(locale, {
     weekday: 'long', day: 'numeric', month: 'long',
   })
 }
 
 // All statuses the API supports
-type Status = 'pending' | 'confirmed' | 'declined' | 'arrived' | 'no_show' | 'completed' | 'cancelled'
+type Status = 'pending' | 'confirmed' | 'rejected' | 'arrived' | 'no_show' | 'completed' | 'cancelled'
 
 const ACTIVE_STATUSES: Status[] = ['pending', 'confirmed', 'arrived']
 
 export default function ReservationsPage() {
+  const { lang } = useLang()
+  const tx = dashboardT[lang].reservationsPage
+  const locale = lang === 'EN' ? 'en-GB' : 'de-AT'
   const supabase = createClient()
   const [reservations, setReservations] = useState<Record<string, Reservation[]>>({})
   const [selectedDate, setSelectedDate] = useState(todayKey)
   const [loading, setLoading] = useState(true)
+  const [fetchError, setFetchError] = useState<string | null>(null)
 
   const fetchReservations = useCallback(async () => {
     const { data, error } = await supabase
@@ -33,7 +39,8 @@ export default function ReservationsPage() {
       .select('*')
       .order('reservation_time', { ascending: true })
 
-    if (error) { console.error(error); return }
+    if (error) { setFetchError(error.message); setLoading(false); return }
+    setFetchError(null)
 
     const grouped: Record<string, Reservation[]> = {}
     for (const row of data ?? []) {
@@ -74,11 +81,7 @@ export default function ReservationsPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status }),
     })
-    if (!res.ok) {
-      const err = await res.json()
-      console.error('Status update failed:', err)
-      return false
-    }
+    if (!res.ok) return false
     // Optimistic update
     setReservations(prev => {
       const updated = { ...prev }
@@ -97,7 +100,7 @@ export default function ReservationsPage() {
   }
 
   async function handleDecline(id: string, _reply: string) {
-    await patchStatus(id, 'declined')
+    await patchStatus(id, 'rejected')
   }
 
   async function handleArrived(id: string) {
@@ -154,7 +157,7 @@ export default function ReservationsPage() {
         <div className="rounded-xl px-5 py-2 flex items-center gap-2" style={{ background: 'rgba(255,255,255,0.65)', border: '1px solid rgba(255,255,255,0.9)' }}>
           <CalendarDays size={16} strokeWidth={2} style={{ color: '#1B7A43' }}/>
           <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 14, fontWeight: 600, color: '#1C231F' }}>
-            {now.toLocaleDateString('de-AT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+            {now.toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
           </span>
         </div>
 
@@ -162,11 +165,11 @@ export default function ReservationsPage() {
           {totalPending > 0 && (
             <div className="flex items-center gap-2.5 rounded-xl px-4 py-2" style={{ background: '#0D472B', boxShadow: '0 2px 12px rgba(13,71,43,0.3)' }}>
               <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#fff', opacity: 0.85 }}/>
-              <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 14, fontWeight: 700, color: '#fff' }}>{totalPending} offen</span>
+              <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 14, fontWeight: 700, color: '#fff' }}>{tx.openCount(totalPending)}</span>
             </div>
           )}
           <div className="flex items-center gap-2.5 rounded-xl px-4 py-2" style={{ background: 'rgba(27,122,67,0.1)', border: '1px solid rgba(27,122,67,0.2)' }}>
-            <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 14, fontWeight: 600, color: '#1B7A43' }}>{totalAll} gesamt</span>
+            <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 14, fontWeight: 600, color: '#1B7A43' }}>{tx.totalCount(totalAll)}</span>
           </div>
         </div>
       </header>
@@ -178,7 +181,7 @@ export default function ReservationsPage() {
         <div className="flex flex-col shrink-0" style={{ width: '45%', overflow: 'hidden', borderRight: '1px solid rgba(28,35,31,0.08)' }}>
           <div className="flex flex-col flex-1 m-5 rounded-2xl overflow-hidden" style={{ background: 'rgba(255,255,255,0.52)', backdropFilter: 'blur(32px)', WebkitBackdropFilter: 'blur(32px)', border: '1px solid rgba(255,255,255,0.85)', boxShadow: '0 8px 40px rgba(28,35,31,0.1), 0 1px 4px rgba(28,35,31,0.06), inset 0 1px 0 rgba(255,255,255,0.9)' }}>
             <div className="flex items-center gap-2 px-5 pt-4 pb-0">
-              <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 11, fontWeight: 600, color: '#8fa393', letterSpacing: '0.14em', textTransform: 'uppercase' }}>Monatsübersicht</p>
+              <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 11, fontWeight: 600, color: '#8fa393', letterSpacing: '0.14em', textTransform: 'uppercase' }}>{tx.monthOverview}</p>
             </div>
             <GlassCalendar summaries={summaries} selectedDate={selectedDate} onSelectDate={setSelectedDate}/>
           </div>
@@ -189,26 +192,26 @@ export default function ReservationsPage() {
           <div className="px-6 py-4 shrink-0 flex items-end justify-between" style={{ background: 'rgba(255,255,255,0.35)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', borderBottom: '1px solid rgba(28,35,31,0.08)' }}>
             <div>
               <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 10, fontWeight: 600, color: '#8fa393', letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: 3 }}>
-                {selectedDate === todayKey ? 'Heute' : 'Ausgewählter Tag'}
+                {selectedDate === todayKey ? tx.today : tx.selectedDay}
               </p>
               <h2 style={{ fontFamily: "'DM Serif Display', serif", fontSize: 26, fontWeight: 400, color: '#1C231F', letterSpacing: '-0.02em', lineHeight: 1 }}>
-                {formatDate(selectedDate)}
+                {formatDate(selectedDate, locale)}
               </h2>
             </div>
             <div className="flex items-center gap-2">
               {pendingCount > 0 && (
                 <div className="flex items-center gap-2 rounded-xl px-3.5 py-1.5" style={{ background: '#0D472B', boxShadow: '0 2px 8px rgba(13,71,43,0.25)' }}>
-                  <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 700, color: '#fff' }}>{pendingCount} ausstehend</span>
+                  <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 700, color: '#fff' }}>{tx.pendingCount(pendingCount)}</span>
                 </div>
               )}
               {confirmedCount > 0 && (
                 <div className="flex items-center gap-2 rounded-xl px-3.5 py-1.5" style={{ background: 'rgba(27,122,67,0.1)', border: '1px solid rgba(27,122,67,0.2)' }}>
-                  <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 600, color: '#1B7A43' }}>{confirmedCount} bestätigt</span>
+                  <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 600, color: '#1B7A43' }}>{tx.confirmedCount(confirmedCount)}</span>
                 </div>
               )}
               {arrivedCount > 0 && (
                 <div className="flex items-center gap-2 rounded-xl px-3.5 py-1.5" style={{ background: 'rgba(13,71,43,0.12)', border: '1px solid rgba(13,71,43,0.25)' }}>
-                  <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 600, color: '#0D472B' }}>{arrivedCount} da</span>
+                  <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 600, color: '#0D472B' }}>{tx.arrivedCount(arrivedCount)}</span>
                 </div>
               )}
             </div>
@@ -216,15 +219,20 @@ export default function ReservationsPage() {
 
           {/* Card feed */}
           <div className="flex-1 overflow-y-auto px-5 py-5" style={{ scrollbarWidth: 'none' }}>
-            {loading ? (
+            {fetchError ? (
+              <div className="flex flex-col items-center justify-center rounded-2xl p-8" style={{ background: 'rgba(220,53,69,0.06)', border: '1px solid rgba(220,53,69,0.2)' }}>
+                <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: '#DC3545', fontWeight: 600 }}>Failed to load reservations</p>
+                <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12, color: '#DC3545', opacity: 0.7, marginTop: 4 }}>{fetchError}</p>
+              </div>
+            ) : loading ? (
               <div className="flex items-center justify-center h-40">
-                <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 14, color: '#8fa393' }}>Lädt…</p>
+                <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 14, color: '#8fa393' }}>{tx.loading}</p>
               </div>
             ) : dayReservations.length === 0 ? (
               <div className="flex flex-col items-center justify-center rounded-2xl" style={{ height: '55%', background: 'rgba(255,255,255,0.45)', backdropFilter: 'blur(24px)', border: '1px solid rgba(255,255,255,0.8)', boxShadow: '0 4px 24px rgba(28,35,31,0.07)' }}>
                 <CalendarDays size={40} strokeWidth={1.5} style={{ color: '#c0cfc3', marginBottom: 16 }}/>
-                <p style={{ fontFamily: "'DM Serif Display', serif", fontSize: 22, fontWeight: 400, color: '#8fa393', letterSpacing: '-0.01em' }}>Keine Reservierungen</p>
-                <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 14, color: '#aabcaf', marginTop: 6 }}>Für diesen Tag sind keine Einträge vorhanden</p>
+                <p style={{ fontFamily: "'DM Serif Display', serif", fontSize: 22, fontWeight: 400, color: '#8fa393', letterSpacing: '-0.01em' }}>{tx.noReservations}</p>
+                <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 14, color: '#aabcaf', marginTop: 6 }}>{tx.noEntries}</p>
               </div>
             ) : (
               <div className="flex flex-col gap-4">
@@ -244,7 +252,7 @@ export default function ReservationsPage() {
                 {doneRes.length > 0 && (
                   <div className="flex items-center gap-3 py-1">
                     <div style={{ flex: 1, height: 1, background: 'rgba(28,35,31,0.1)' }}/>
-                    <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 10, fontWeight: 600, color: '#8fa393', letterSpacing: '0.14em', textTransform: 'uppercase' }}>Bereits bearbeitet</span>
+                    <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 10, fontWeight: 600, color: '#8fa393', letterSpacing: '0.14em', textTransform: 'uppercase' }}>{tx.alreadyHandled}</span>
                     <div style={{ flex: 1, height: 1, background: 'rgba(28,35,31,0.1)' }}/>
                   </div>
                 )}

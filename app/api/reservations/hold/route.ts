@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { holdLimiter, getClientIp } from '@/lib/ratelimit'
 import { NextRequest, NextResponse } from 'next/server'
 
 const HOLD_MINUTES = 3
@@ -15,6 +16,9 @@ function toMinutes(t: string) {
 // Returns { ok, heldUntil } or 409 { error, conflict: true } if taken.
 // ─────────────────────────────────────────────────────────────────────────────
 export async function POST(request: NextRequest) {
+  const { success: rateOk } = await holdLimiter.limit(getClientIp(request))
+  if (!rateOk) return NextResponse.json({ error: 'Too many requests' }, { status: 429 })
+
   const body = await request.json()
   const { tableId, date, time, duration = 90, sessionId, restaurantId } = body as {
     tableId: string

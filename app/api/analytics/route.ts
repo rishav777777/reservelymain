@@ -2,8 +2,25 @@ import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function GET(request: NextRequest) {
-  const days = parseInt(request.nextUrl.searchParams.get('days') ?? '7')
   const supabase = await createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('restaurant_id, role')
+    .eq('id', user.id)
+    .single()
+
+  if (!profile?.restaurant_id) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+  if (profile.role === 'staff') {
+    return NextResponse.json({ error: 'Forbidden — staff cannot view analytics' }, { status: 403 })
+  }
+
+  const days = parseInt(request.nextUrl.searchParams.get('days') ?? '7')
 
   const fromDate = new Date()
   fromDate.setDate(fromDate.getDate() - days)
@@ -12,6 +29,7 @@ export async function GET(request: NextRequest) {
   const { data: rows } = await supabase
     .from('reservations')
     .select('reservation_date, reservation_time, is_walk_in, status')
+    .eq('restaurant_id', profile.restaurant_id)
     .gte('reservation_date', fromStr)
     .order('reservation_date', { ascending: true })
 

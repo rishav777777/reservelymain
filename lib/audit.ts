@@ -19,6 +19,6 @@ export async function logAction(entry: AuditEntry): Promise<void> {
     )
     await admin.from('audit_logs').insert(entry)
   } catch {
-    console.warn('[audit] Failed to write audit log:', entry.action)
+    // Non-blocking — audit failure must never break the caller
   }
 }

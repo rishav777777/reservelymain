@@ -17,9 +17,9 @@ export default async function SettingsPage() {
 
   const { data: restaurant } = await supabase
     .from('restaurants')
-    .select('id, name, phone, address, slug, description, email, subdomain, created_at')
+    .select('id, name, phone, address, slug, description, email, subdomain, created_at, timezone, booking_enabled, max_party_size, owner_whatsapp, wa_notifications, wa_daily_summary')
     .eq('id', profile?.restaurant_id)
     .single()
 
-  return <SettingsClient restaurant={restaurant as Restaurant} />
+  return <SettingsClient restaurant={restaurant as Restaurant} isOwner={profile?.role === 'owner'} />
 }

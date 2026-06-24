@@ -1,7 +1,47 @@
+import { createClient } from '@/lib/supabase/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { Resend } from 'resend'
 import { NextRequest, NextResponse } from 'next/server'
 import { demoRequestLimiter, getClientIp } from '@/lib/ratelimit'
+
+export async function GET(request: NextRequest) {
+  const supabase = await createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+
+  if (!profile || profile.role !== 'owner') {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
+  const { searchParams } = new URL(request.url)
+  const status = searchParams.get('status')
+
+  const admin = createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
+
+  let query = admin
+    .from('demo_requests')
+    .select('*')
+    .order('created_at', { ascending: false })
+
+  if (status && ['pending', 'approved', 'declined'].includes(status)) {
+    query = query.eq('status', status)
+  }
+
+  const { data, error } = await query
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  return NextResponse.json({ requests: data ?? [] })
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -21,7 +61,7 @@ export async function POST(request: NextRequest) {
         )
       }
     } catch {
-      console.warn('[ratelimit] Redis unavailable, skipping rate limit check')
+      // Fails open — rate limit unavailable
     }
 
     const body = await request.json()

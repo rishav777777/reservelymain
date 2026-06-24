@@ -2,6 +2,8 @@
 
 import { useState } from 'react'
 import { toast } from 'sonner'
+import { useLang } from '@/components/i18n/LanguageProvider'
+import { dashboardT } from '@/lib/i18n/dashboardT'
 
 interface DemoRequest {
   id: string
@@ -16,6 +18,10 @@ interface DemoRequest {
 }
 
 export function RequestsClient({ initialRequests }: { initialRequests: DemoRequest[] }) {
+  const { lang } = useLang()
+  const tx = dashboardT[lang].requests
+  const locale = lang === 'EN' ? 'en-GB' : 'de-AT'
+
   const [requests, setRequests] = useState<DemoRequest[]>(initialRequests)
 
   async function handleStatus(id: string, status: 'approved' | 'declined') {
@@ -27,14 +33,14 @@ export function RequestsClient({ initialRequests }: { initialRequests: DemoReque
     const body = await res.json()
     if (!res.ok) { toast.error(body.error ?? 'Failed'); return }
     setRequests(prev => prev.map(r => r.id === id ? { ...r, status } : r))
-    toast.success(status === 'approved' ? 'Request approved' : 'Request declined')
+    toast.success(status === 'approved' ? tx.approve : tx.decline)
   }
 
   if (requests.length === 0) {
     return (
       <div className="bg-white border border-zinc-200 rounded-lg px-6 py-12 text-center">
-        <p className="text-sm text-zinc-500">No demo requests yet</p>
-        <p className="text-xs text-zinc-400 mt-1">Requests submitted on the landing page appear here</p>
+        <p className="text-sm text-zinc-500">{tx.empty}</p>
+        <p className="text-xs text-zinc-400 mt-1">{tx.emptySub}</p>
       </div>
     )
   }
@@ -64,7 +70,7 @@ export function RequestsClient({ initialRequests }: { initialRequests: DemoReque
                   {r.status}
                 </span>
                 <p className="text-xs text-zinc-400">
-                  {new Date(r.created_at).toLocaleDateString('en-GB')}
+                  {new Date(r.created_at).toLocaleDateString(locale)}
                 </p>
               </div>
               {r.status === 'pending' && (
@@ -75,7 +81,7 @@ export function RequestsClient({ initialRequests }: { initialRequests: DemoReque
                       fontWeight: 700, color: '#A82929', border: '1.5px solid rgba(168,41,41,0.3)',
                       background: 'rgba(168,41,41,0.06)', cursor: 'pointer' }}
                   >
-                    Decline
+                    {tx.decline}
                   </button>
                   <button
                     onClick={() => handleStatus(r.id, 'approved')}
@@ -83,7 +89,7 @@ export function RequestsClient({ initialRequests }: { initialRequests: DemoReque
                       fontWeight: 700, color: '#fff', border: 'none',
                       background: '#1B7A43', cursor: 'pointer' }}
                   >
-                    Approve
+                    {tx.approve}
                   </button>
                 </div>
               )}

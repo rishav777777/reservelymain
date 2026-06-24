@@ -5,6 +5,8 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend,
 } from 'recharts'
+import { useLang } from '@/components/i18n/LanguageProvider'
+import { dashboardT } from '@/lib/i18n/dashboardT'
 
 const STATUS_COLORS: Record<string, string> = {
   confirmed: '#10B981',
@@ -16,7 +18,7 @@ const STATUS_COLORS: Record<string, string> = {
   no_show:   '#9CA3AF',
 }
 
-interface DayData    { date: string; label: string; online: number; walkIn: number }
+interface DayData    { date: string; online: number; walkIn: number }
 interface HourData   { hour: string; count: number }
 interface StatusData { status: string; count: number }
 interface Summary {
@@ -38,6 +40,8 @@ export function AnalyticsClient({ initialData }: { initialData: AnalyticsData })
   const [data, setData]       = useState<AnalyticsData>(initialData)
   const [days, setDays]       = useState(30)
   const [loading, setLoading] = useState(false)
+  const { lang } = useLang()
+  const tx = dashboardT[lang].analytics
 
   async function changeDays(newDays: number) {
     if (newDays === days) return
@@ -51,14 +55,19 @@ export function AnalyticsClient({ initialData }: { initialData: AnalyticsData })
     }
   }
 
-  const { summary, reservationsPerDay, peakHours, statusBreakdown } = data
+  const locale = lang === 'EN' ? 'en-GB' : 'de-AT'
+  const { summary, peakHours, statusBreakdown } = data
+  const reservationsPerDay = data.reservationsPerDay.map(d => ({
+    ...d,
+    label: new Date(d.date + 'T12:00:00').toLocaleDateString(locale, { weekday: 'short', day: 'numeric' }),
+  }))
 
   return (
     <div className="p-5 space-y-5">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-sm font-semibold text-gray-900">Analytics</h1>
-          <p className="text-xs text-gray-400 mt-0.5">{summary.total} reservations · last {days} days</p>
+          <h1 className="text-sm font-semibold text-gray-900">{tx.title}</h1>
+          <p className="text-xs text-gray-400 mt-0.5">{tx.subtitle(summary.total, days)}</p>
         </div>
         <div className="flex items-center gap-0.5 bg-gray-100 rounded-md p-0.5">
           {DAY_OPTIONS.map((d) => (
@@ -76,12 +85,12 @@ export function AnalyticsClient({ initialData }: { initialData: AnalyticsData })
       </div>
 
       <div className="grid grid-cols-3 gap-3">
-        <MetricCard label="Approval Rate"     value={summary.approvalRate} />
-        <MetricCard label="No-show Rate"      value={summary.noShowRate} />
-        <MetricCard label="Cancellation Rate" value={summary.cancellationRate} />
+        <MetricCard label={tx.approvalRate}     value={summary.approvalRate} />
+        <MetricCard label={tx.noShowRate}      value={summary.noShowRate} />
+        <MetricCard label={tx.cancellationRate} value={summary.cancellationRate} />
       </div>
 
-      <ChartCard title="Reservations per Day" loading={loading}>
+      <ChartCard title={tx.reservationsPerDay} loading={loading}>
         <ResponsiveContainer width="100%" height={220}>
           <BarChart data={reservationsPerDay} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
             <XAxis dataKey="label" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
@@ -93,9 +102,9 @@ export function AnalyticsClient({ initialData }: { initialData: AnalyticsData })
         </ResponsiveContainer>
       </ChartCard>
 
-      <ChartCard title="Peak Hours" loading={loading}>
+      <ChartCard title={tx.peakHours} loading={loading}>
         {peakHours.length === 0 ? (
-          <p className="text-xs text-gray-400 text-center py-10">No data for this period</p>
+          <p className="text-xs text-gray-400 text-center py-10">{tx.noData}</p>
         ) : (
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={peakHours} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
@@ -108,9 +117,9 @@ export function AnalyticsClient({ initialData }: { initialData: AnalyticsData })
         )}
       </ChartCard>
 
-      <ChartCard title="Status Breakdown" loading={loading}>
+      <ChartCard title={tx.statusBreakdown} loading={loading}>
         {statusBreakdown.length === 0 ? (
-          <p className="text-xs text-gray-400 text-center py-10">No data for this period</p>
+          <p className="text-xs text-gray-400 text-center py-10">{tx.noData}</p>
         ) : (
           <ResponsiveContainer width="100%" height={240}>
             <PieChart>

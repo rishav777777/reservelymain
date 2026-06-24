@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { allocateTable, getOverlappingTableIds } from '@/lib/table-allocator'
-import { sendConfirmationEmail, sendRejectionEmail } from '@/lib/email'
+import { sendConfirmationEmail, sendRejectionEmail } from '@/lib/services/email'
 import { logAction } from '@/lib/audit'
 import { NextRequest, NextResponse } from 'next/server'
 import { ReservationStatus } from '@/types'
@@ -30,8 +30,14 @@ export async function PATCH(
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { data: profile } = await supabase
-    .from('profiles').select('restaurant_id, full_name').eq('id', user.id).single()
+    .from('profiles').select('restaurant_id, full_name, role').eq('id', user.id).single()
   if (!profile) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
+  // Staff may only mark arrived/completed/no_show — not confirm, reject, or cancel
+  const STAFF_ALLOWED: ReservationStatus[] = ['arrived', 'completed', 'no_show']
+  if (profile.role === 'staff' && !STAFF_ALLOWED.includes(status)) {
+    return NextResponse.json({ error: 'Forbidden — staff cannot perform this action' }, { status: 403 })
+  }
 
   const { data: existing, error: fetchErr } = await supabase
     .from('reservations')
@@ -116,6 +122,42 @@ export async function PATCH(
     },
   }).catch(() => {})
 
+  // Fire-and-forget guest profile upsert when reservation is completed
+  if (status === 'completed' && data.guest_email) {
+    ;(async () => {
+      try {
+        const { data: existing_guest } = await supabase
+          .from('guest_profiles')
+          .select('id, visit_count, first_visit')
+          .eq('restaurant_id', existing.restaurant_id)
+          .eq('email', data.guest_email)
+          .single()
+
+        if (existing_guest) {
+          await supabase
+            .from('guest_profiles')
+            .update({
+              name:        data.guest_name,
+              phone:       data.guest_phone ?? null,
+              last_visit:  data.reservation_date,
+              visit_count: existing_guest.visit_count + 1,
+            })
+            .eq('id', existing_guest.id)
+        } else {
+          await supabase.from('guest_profiles').insert({
+            restaurant_id: existing.restaurant_id,
+            email:         data.guest_email,
+            name:          data.guest_name,
+            phone:         data.guest_phone ?? null,
+            first_visit:   data.reservation_date,
+            last_visit:    data.reservation_date,
+            visit_count:   1,
+          })
+        }
+      } catch { /* fire-and-forget — never throw to caller */ }
+    })()
+  }
+
   // Fire-and-forget email
   if (status === 'confirmed' || status === 'rejected') {
     const { data: restaurant } = await supabase
@@ -125,7 +167,7 @@ export async function PATCH(
       .single()
     const restaurantName = restaurant?.name ?? 'The Restaurant'
     const emailFn = status === 'confirmed' ? sendConfirmationEmail : sendRejectionEmail
-    emailFn(data, restaurantName).catch(console.error)
+    emailFn(data, restaurantName).catch(() => {})
   }
 
   return NextResponse.json(data)

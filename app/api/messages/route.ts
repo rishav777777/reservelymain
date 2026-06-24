@@ -10,6 +10,11 @@ export async function GET(request: NextRequest) {
   }
 
   const supabase = await createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  // RLS ensures only messages belonging to this user's restaurant are returned
   const { data, error } = await supabase
     .from('messages')
     .select('*')
@@ -22,17 +27,34 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   const body = await request.json()
-  const { reservation_id, sender_type, sender_name, content } = body
+  const { reservation_id, sender_type, sender_name, content } = body as {
+    reservation_id: string
+    sender_type:    'guest' | 'restaurant'
+    sender_name?:   string
+    content:        string
+  }
 
-  if (!reservation_id || !sender_type || !content) {
+  if (!reservation_id || !sender_type || !content?.trim()) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
+  }
+
+  if (!['guest', 'restaurant'].includes(sender_type)) {
+    return NextResponse.json({ error: 'Invalid sender_type' }, { status: 422 })
   }
 
   const supabase = await createClient()
 
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   const { data, error } = await supabase
     .from('messages')
-    .insert({ reservation_id, sender_type, sender_name, content })
+    .insert({
+      reservation_id,
+      sender_type,
+      sender_name: sender_name?.trim() ?? null,
+      content:     content.trim().slice(0, 2000),
+    })
     .select()
     .single()
 

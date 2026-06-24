@@ -3,6 +3,8 @@
 import { useState } from 'react'
 import { X, Plus, Users } from 'lucide-react'
 import { Reservation } from '@/types'
+import { useLang } from '@/components/i18n/LanguageProvider'
+import { dashboardT } from '@/lib/i18n/dashboardT'
 
 const CATEGORIES = ['Indoor', 'Outdoor', 'VIP', 'Bar']
 
@@ -18,6 +20,8 @@ export function WalkInModal({ open, onClose, onCreated }: WalkInModalProps) {
   const [duration,  setDuration]    = useState(60)
   const [loading,   setLoading]     = useState(false)
   const [error,     setError]       = useState<string | null>(null)
+  const { lang } = useLang()
+  const tx = dashboardT[lang].walkIn
 
   if (!open) return null
 
@@ -62,7 +66,7 @@ export function WalkInModal({ open, onClose, onCreated }: WalkInModalProps) {
             <div className="w-7 h-7 rounded-lg bg-brand-primary flex items-center justify-center">
               <Plus size={14} color="white" strokeWidth={2.5} />
             </div>
-            <h2 className="text-sm font-semibold text-zinc-900">Walk-in Guest</h2>
+            <h2 className="text-sm font-semibold text-zinc-900">{tx.title}</h2>
           </div>
           <button onClick={onClose} className="text-zinc-400 hover:text-zinc-700 transition-colors">
             <X size={16} />
@@ -75,7 +79,7 @@ export function WalkInModal({ open, onClose, onCreated }: WalkInModalProps) {
           {/* Party size */}
           <div>
             <label className="text-xs font-medium text-zinc-500 uppercase tracking-wider mb-2 block">
-              Party Size
+              {tx.partySize}
             </label>
             <div className="flex items-center gap-3">
               <button
@@ -87,7 +91,7 @@ export function WalkInModal({ open, onClose, onCreated }: WalkInModalProps) {
               <div className="flex items-center gap-2 flex-1 justify-center">
                 <Users size={14} className="text-zinc-400" />
                 <span className="text-lg font-bold text-zinc-900 w-6 text-center">{partySize}</span>
-                <span className="text-sm text-zinc-400">{partySize === 1 ? 'guest' : 'guests'}</span>
+                <span className="text-sm text-zinc-400">{partySize === 1 ? tx.guest : tx.guests}</span>
               </div>
               <button
                 onClick={() => setPartySize(v => Math.min(20, v + 1))}
@@ -101,7 +105,7 @@ export function WalkInModal({ open, onClose, onCreated }: WalkInModalProps) {
           {/* Category */}
           <div>
             <label className="text-xs font-medium text-zinc-500 uppercase tracking-wider mb-2 block">
-              Seating Area
+              {tx.seatingArea}
             </label>
             <div className="grid grid-cols-2 gap-2">
               {CATEGORIES.map(cat => (
@@ -123,7 +127,7 @@ export function WalkInModal({ open, onClose, onCreated }: WalkInModalProps) {
           {/* Duration */}
           <div>
             <label className="text-xs font-medium text-zinc-500 uppercase tracking-wider mb-2 block">
-              Expected Duration
+              {tx.expectedDuration}
             </label>
             <div className="grid grid-cols-3 gap-2">
               {[30, 60, 90, 120, 150, 180].map(d => (
@@ -156,14 +160,14 @@ export function WalkInModal({ open, onClose, onCreated }: WalkInModalProps) {
             onClick={onClose}
             className="flex-1 py-2.5 rounded-xl border border-zinc-200 text-zinc-600 text-sm font-medium hover:bg-zinc-50 transition-colors"
           >
-            Cancel
+            {tx.cancel}
           </button>
           <button
             onClick={handleSubmit}
             disabled={loading}
             className="flex-1 py-2.5 rounded-xl bg-brand-primary hover:bg-brand-primary/90 text-white text-sm font-semibold transition-colors disabled:opacity-60"
           >
-            {loading ? 'Seating…' : 'Seat Guest'}
+            {loading ? tx.seating : tx.seatGuest}
           </button>
         </div>
       </div>

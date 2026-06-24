@@ -7,9 +7,13 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { useLang } from '@/components/i18n/LanguageProvider'
+import { dashboardT } from '@/lib/i18n/dashboardT'
 
 export default function LoginPage() {
   const router = useRouter()
+  const { lang } = useLang()
+  const tx = dashboardT[lang].login
   const [email, setEmail]           = useState('')
   const [password, setPassword]     = useState('')
   const [error, setError]           = useState<string | null>(null)
@@ -37,14 +41,14 @@ export default function LoginPage() {
 
   async function handleForgotPassword() {
     if (!email.trim()) {
-      setError('Enter your email address first, then click Forgot password')
+      setError(tx.enterEmail)
       return
     }
     setResetLoading(true)
     setError(null)
     const supabase = createClient()
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`,
+      redirectTo: `${window.location.origin}/auth/callback?next=/reset-password`,
     })
     if (error) {
       setError(error.message)
@@ -64,15 +68,15 @@ export default function LoginPage() {
           </div>
           <span className="font-semibold text-gray-900 text-sm">Reservely</span>
         </div>
-        <CardTitle className="text-lg font-semibold text-gray-900">Sign in</CardTitle>
+        <CardTitle className="text-lg font-semibold text-gray-900">{tx.title}</CardTitle>
         <CardDescription className="text-xs text-gray-500">
-          Enter your credentials to access the dashboard
+          {tx.subtitle}
         </CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSignIn} className="space-y-3">
           <div className="space-y-1">
-            <Label htmlFor="email" className="text-xs font-medium text-gray-700">Email</Label>
+            <Label htmlFor="email" className="text-xs font-medium text-gray-700">{tx.email}</Label>
             <Input
               id="email"
               type="email"
@@ -84,7 +88,7 @@ export default function LoginPage() {
             />
           </div>
           <div className="space-y-1">
-            <Label htmlFor="password" className="text-xs font-medium text-gray-700">Password</Label>
+            <Label htmlFor="password" className="text-xs font-medium text-gray-700">{tx.password}</Label>
             <Input
               id="password"
               type="password"
@@ -107,13 +111,13 @@ export default function LoginPage() {
             className="w-full h-8 text-sm bg-brand-primary hover:bg-brand-primary/90 text-white"
             disabled={loading}
           >
-            {loading ? 'Signing in...' : 'Sign in'}
+            {loading ? tx.signingIn : tx.signIn}
           </Button>
 
           <div className="text-center pt-1">
             {resetSent ? (
               <p className="text-xs text-emerald-600">
-                Reset link sent — check your email
+                {tx.resetSent}
               </p>
             ) : (
               <button
@@ -122,7 +126,7 @@ export default function LoginPage() {
                 disabled={resetLoading}
                 className="text-xs text-zinc-400 hover:text-zinc-600 transition-colors"
               >
-                {resetLoading ? 'Sending...' : 'Forgot password?'}
+                {resetLoading ? tx.sending : tx.forgot}
               </button>
             )}
           </div>

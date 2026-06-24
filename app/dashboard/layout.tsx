@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { getAdminClient } from '@/lib/admin-auth'
 import { DashboardShell } from '@/components/dashboard/DashboardShell'
 import { UserRole } from '@/types'
 
@@ -7,19 +8,50 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/login')
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('role, is_active')
-    .eq('id', user?.id ?? '')
+    .select('role, is_active, full_name, restaurant_id, is_superadmin')
+    .eq('id', user.id ?? '')
     .single()
 
+  // Suspended account — sign out and redirect to login
   if (profile?.is_active === false) {
     await supabase.auth.signOut()
-    redirect('/login')
+    redirect('/login?reason=suspended')
   }
+
+  // Maintenance mode — superadmins bypass it
+  if (!profile?.is_superadmin) {
+    const admin = getAdminClient()
+    const { data: maintenanceRow } = await admin
+      .from('platform_settings')
+      .select('value')
+      .eq('key', 'maintenance_mode')
+      .single()
+
+    if (maintenanceRow?.value === true || maintenanceRow?.value === 'true') {
+      redirect('/maintenance')
+    }
+  }
+
+  const { data: restaurant } = await supabase
+    .from('restaurants')
+    .select('name, owner_whatsapp')
+    .eq('id', profile?.restaurant_id ?? '')
+    .single()
 
   const userRole = (profile?.role ?? 'staff') as UserRole
 
-  return <DashboardShell userRole={userRole}>{children}</DashboardShell>
+  return (
+    <DashboardShell
+      userRole={userRole}
+      restaurantName={restaurant?.name ?? ''}
+      userName={profile?.full_name ?? user?.email?.split('@')[0] ?? ''}
+      waSetup={!!restaurant?.owner_whatsapp}
+    >
+      {children}
+    </DashboardShell>
+  )
 }
