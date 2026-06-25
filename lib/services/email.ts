@@ -1,7 +1,7 @@
 import { Resend } from 'resend'
 import { Reservation } from '@/types'
 
-const FROM = 'Reservely <noreply@reservely.app>'
+const FROM    = process.env.RESEND_FROM_EMAIL ?? 'onboarding@resend.dev'
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
 
 function formatDate(date: string): string {

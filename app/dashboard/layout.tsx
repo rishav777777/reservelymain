@@ -10,11 +10,20 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role, is_active, full_name, restaurant_id, is_superadmin')
-    .eq('id', user.id ?? '')
-    .single()
+  // Fetch profile + maintenance check in parallel
+  const admin = getAdminClient()
+  const [{ data: profile }, { data: maintenanceRow }] = await Promise.all([
+    supabase
+      .from('profiles')
+      .select('role, is_active, full_name, restaurant_id, is_superadmin')
+      .eq('id', user.id)
+      .single(),
+    admin
+      .from('platform_settings')
+      .select('value')
+      .eq('key', 'maintenance_mode')
+      .single(),
+  ])
 
   // Suspended account — sign out and redirect to login
   if (profile?.is_active === false) {
@@ -24,13 +33,6 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   // Maintenance mode — superadmins bypass it
   if (!profile?.is_superadmin) {
-    const admin = getAdminClient()
-    const { data: maintenanceRow } = await admin
-      .from('platform_settings')
-      .select('value')
-      .eq('key', 'maintenance_mode')
-      .single()
-
     if (maintenanceRow?.value === true || maintenanceRow?.value === 'true') {
       redirect('/maintenance')
     }

@@ -237,6 +237,57 @@
 .btn-press { transition: transform .12s ease; }
 .btn-press:active { transform: scale(0.96); }
 
+/* ── Mobile / cross-device fixes ─────────────────────────────────────────── */
+
+/* iOS Safari: prevent elastic overscroll on fixed/full-height layouts */
+html, body {
+  overscroll-behavior: none;
+}
+
+/* iOS safe area padding for bottom nav / modals */
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.safe-top {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+/* Minimum 44×44px tap targets (Apple HIG / WCAG 2.5.5) */
+button, [role="button"], a, input[type="checkbox"], input[type="radio"] {
+  min-height: 44px;
+}
+/* Except tiny inline icon buttons — override explicitly */
+button.icon-btn { min-height: unset; }
+
+/* Prevent iOS text zoom on input focus */
+input, select, textarea {
+  font-size: max(16px, 1em);
+}
+
+/* Remove 300ms tap delay on all interactive elements */
+a, button, [role="button"], input, select, textarea, label {
+  touch-action: manipulation;
+}
+
+/* iOS Safari: momentum scroll in overflow containers */
+.scroll-ios {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Prevent text selection during drag interactions */
+.select-none-drag {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Fix 100vh on mobile browsers (excludes browser chrome) */
+.h-screen-safe {
+  height: 100dvh;
+}
+.min-h-screen-safe {
+  min-height: 100dvh;
+}
+
 /* ── Focus ring ──────────────────────────────────────────────────────────── */
 .rv-focus:focus-visible {
   outline: 2px solid #34D399;

@@ -73,6 +73,12 @@ export default function LayoutEditorPage() {
 
   const [dragItem, setDragItem] = useState<{ type: 'zone' | 'table'; id: string } | null>(null)
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
+  const [resizeItem, setResizeItem] = useState<{
+    id: string
+    handle: 'n'|'s'|'e'|'w'|'ne'|'nw'|'se'|'sw'
+    startMX: number; startMY: number
+    origX: number; origY: number; origW: number; origH: number
+  } | null>(null)
   const canvasRef = useRef<SVGSVGElement | null>(null)
 
   const [loading,  setLoading]  = useState(true)
@@ -160,20 +166,69 @@ export default function LayoutEditorPage() {
     setNewTableName('')
   }
 
-  const startDrag = (e: React.MouseEvent, type: 'zone' | 'table', id: string, currentX: number, currentY: number) => {
+  function getClientXY(e: React.MouseEvent | React.TouchEvent): { clientX: number; clientY: number } {
+    if ('touches' in e) {
+      return { clientX: e.touches[0]?.clientX ?? 0, clientY: e.touches[0]?.clientY ?? 0 }
+    }
+    return { clientX: e.clientX, clientY: e.clientY }
+  }
+
+  const startDrag = (e: React.MouseEvent | React.TouchEvent, type: 'zone' | 'table', id: string, currentX: number, currentY: number) => {
     e.preventDefault()
     if (!canvasRef.current) return
     const rect = canvasRef.current.getBoundingClientRect()
+    const { clientX, clientY } = getClientXY(e)
     setDragItem({ type, id })
-    setDragOffset({ x: (e.clientX - rect.left) - currentX, y: (e.clientY - rect.top) - currentY })
+    setDragOffset({ x: (clientX - rect.left) - currentX, y: (clientY - rect.top) - currentY })
   }
 
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!dragItem || !canvasRef.current) return
+  const startResize = (
+    e: React.MouseEvent | React.TouchEvent,
+    id: string,
+    handle: 'n'|'s'|'e'|'w'|'ne'|'nw'|'se'|'sw',
+    zone: Zone,
+  ) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (!canvasRef.current) return
     const rect = canvasRef.current.getBoundingClientRect()
-    let targetX = (e.clientX - rect.left) - dragOffset.x
-    let targetY = (e.clientY - rect.top) - dragOffset.y
+    const { clientX, clientY } = getClientXY(e)
+    setResizeItem({
+      id, handle,
+      startMX: clientX - rect.left,
+      startMY: clientY - rect.top,
+      origX: zone.x, origY: zone.y, origW: zone.w, origH: zone.h,
+    })
+  }
 
+  const handleMove = (e: React.MouseEvent | React.TouchEvent) => {
+    if (!canvasRef.current) return
+    const rect = canvasRef.current.getBoundingClientRect()
+    const { clientX, clientY } = getClientXY(e)
+
+    if (resizeItem) {
+      const dx = (clientX - rect.left) - resizeItem.startMX
+      const dy = (clientY - rect.top)  - resizeItem.startMY
+      const MIN = 80
+      const { origX, origY, origW, origH } = resizeItem
+      setZones(prev => prev.map(z => {
+        if (z.id !== resizeItem.id) return z
+        let x = origX, y = origY, w = origW, h = origH
+        const hnd = resizeItem.handle
+        if (hnd.includes('e')) w = Math.max(MIN, origW + dx)
+        if (hnd.includes('s')) h = Math.max(MIN, origH + dy)
+        if (hnd.includes('w')) { x = origX + dx; w = Math.max(MIN, origW - dx) }
+        if (hnd.includes('n')) { y = origY + dy; h = Math.max(MIN, origH - dy) }
+        if (x < 0) { w = Math.max(MIN, w + x); x = 0 }
+        if (y < 0) { h = Math.max(MIN, h + y); y = 0 }
+        return { ...z, x, y, w, h }
+      }))
+      return
+    }
+
+    if (!dragItem) return
+    let targetX = (clientX - rect.left) - dragOffset.x
+    let targetY = (clientY - rect.top) - dragOffset.y
     if (targetX < 0) targetX = 0
     if (targetY < 0) targetY = 0
 
@@ -197,6 +252,7 @@ export default function LayoutEditorPage() {
       }
     }
     setDragItem(null)
+    setResizeItem(null)
   }
 
   return (
@@ -356,9 +412,12 @@ export default function LayoutEditorPage() {
             width={canvasWidth}
             height={canvasHeight}
             viewBox={`0 0 ${canvasWidth} ${canvasHeight}`}
-            onMouseMove={handleMouseMove}
+            onMouseMove={handleMove}
             onMouseUp={handleMouseUp}
             onMouseLeave={handleMouseUp}
+            onTouchMove={handleMove}
+            onTouchEnd={handleMouseUp}
+            style={{ touchAction: 'none' }}
             className="bg-zinc-50 border border-zinc-200 rounded-2xl relative overflow-hidden select-none"
           >
             <defs>
@@ -371,20 +430,46 @@ export default function LayoutEditorPage() {
             {/* Render Section Areas dynamically */}
             {zones.map((zone) => {
               const closed = !zone.is_open || (zone.is_seasonal && !isInSeason(zone))
-              const fill   = closed ? 'rgba(251,191,36,0.12)' : 'rgba(255,255,255,0.25)'
-              const stroke = closed ? 'rgba(217,119,6,0.45)'  : 'rgba(13,71,43,0.15)'
-              const labelFill = closed ? 'rgba(161,98,7,0.7)' : 'rgba(13,71,43,0.45)'
+              const fill      = closed ? 'rgba(251,191,36,0.12)' : 'rgba(255,255,255,0.25)'
+              const stroke    = closed ? 'rgba(217,119,6,0.45)'  : 'rgba(13,71,43,0.15)'
+              const labelFill = closed ? 'rgba(161,98,7,0.7)'    : 'rgba(13,71,43,0.45)'
+              const { x, y, w, h } = zone
+              const mx = x + w / 2
+              const my = y + h / 2
+              const handles: { hnd: 'n'|'s'|'e'|'w'|'ne'|'nw'|'se'|'sw'; cx: number; cy: number; cur: string }[] = [
+                { hnd: 'nw', cx: x,      cy: y,      cur: 'nw-resize' },
+                { hnd: 'n',  cx: mx,     cy: y,      cur: 'n-resize'  },
+                { hnd: 'ne', cx: x + w,  cy: y,      cur: 'ne-resize' },
+                { hnd: 'e',  cx: x + w,  cy: my,     cur: 'e-resize'  },
+                { hnd: 'se', cx: x + w,  cy: y + h,  cur: 'se-resize' },
+                { hnd: 's',  cx: mx,     cy: y + h,  cur: 's-resize'  },
+                { hnd: 'sw', cx: x,      cy: y + h,  cur: 'sw-resize' },
+                { hnd: 'w',  cx: x,      cy: my,     cur: 'w-resize'  },
+              ]
               return (
                 <g key={zone.id}>
                   <rect
-                    x={zone.x} y={zone.y} width={zone.w} height={zone.h} rx="12"
+                    x={x} y={y} width={w} height={h} rx="12"
                     fill={fill} stroke={stroke} strokeWidth="1.5" strokeDasharray="4 4"
-                    className="cursor-move"
-                    onMouseDown={(e) => startDrag(e, 'zone', zone.id, zone.x, zone.y)}
+                    style={{ cursor: 'move' }}
+                    onMouseDown={(e) => startDrag(e, 'zone', zone.id, x, y)}
+                    onTouchStart={(e) => startDrag(e, 'zone', zone.id, x, y)}
                   />
-                  <text x={zone.x + 12} y={zone.y + 18} style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '9px', fontWeight: 800, fill: labelFill, textTransform: 'uppercase', pointerEvents: 'none' }}>
+                  <text x={x + 12} y={y + 18} style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '9px', fontWeight: 800, fill: labelFill, textTransform: 'uppercase', pointerEvents: 'none' }}>
                     {zone.label}{closed ? ' ✕' : ''}
                   </text>
+                  {handles.map(({ hnd, cx, cy, cur }) => (
+                    <rect
+                      key={hnd}
+                      x={cx - 5} y={cy - 5} width={10} height={10} rx={2}
+                      fill="white"
+                      stroke="rgba(13,71,43,0.5)"
+                      strokeWidth={1.5}
+                      style={{ cursor: cur }}
+                      onMouseDown={(e) => startResize(e, zone.id, hnd, zone)}
+                      onTouchStart={(e) => startResize(e, zone.id, hnd, zone)}
+                    />
+                  ))}
                 </g>
               )
             })}
@@ -393,7 +478,10 @@ export default function LayoutEditorPage() {
             {tables.map((tb) => {
               const isDragging = dragItem?.type === 'table' && dragItem.id === tb.id
               return (
-                <g key={tb.id} onMouseDown={(e) => startDrag(e, 'table', tb.id, tb.x, tb.y)} className="cursor-grab active:cursor-grabbing">
+                <g key={tb.id}
+                  onMouseDown={(e) => startDrag(e, 'table', tb.id, tb.x, tb.y)}
+                  onTouchStart={(e) => startDrag(e, 'table', tb.id, tb.x, tb.y)}
+                  className="cursor-grab active:cursor-grabbing">
                   <rect
                     x={tb.x} y={tb.y} width={tb.w} height={tb.h} rx="9"
                     fill={isDragging ? 'rgba(13,71,43,0.1)' : 'rgba(255,255,255,0.85)'}

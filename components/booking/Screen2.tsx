@@ -354,20 +354,24 @@ export function Screen2({ lang, dateStr, rawDate, timeStr, restaurantId, partySi
               {lang === 'DE' ? 'Erneut versuchen' : 'Try again'}
             </button>
           </div>
-        ) : (
-          <svg width="100%" viewBox="0 0 420 280" style={{ display: 'block' }}>
+        ) : (() => {
+          const vpW = Math.max(420, ...Object.values(zones).map(z => z.x + z.w + 10))
+          const vpH = Math.max(280, ...Object.values(zones).map(z => z.y + z.h + 30))
+          const midX = Math.round(vpW / 2)
+          return (
+          <svg width="100%" viewBox={`0 0 ${vpW} ${vpH}`} style={{ display: 'block' }}>
             <defs>
               <filter id="tbl-glow"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
               <filter id="tbl-sel"><feGaussianBlur stdDeviation="5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
             </defs>
 
-            <rect x="2" y="2" width="416" height="276" rx="16"
+            <rect x="2" y="2" width={vpW - 4} height={vpH - 4} rx="16"
               fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.06)"
               strokeWidth="1.5" strokeDasharray="6 5"/>
 
-            <rect x="170" y="264" width="80" height="14" rx="5"
+            <rect x={midX - 40} y={vpH - 16} width="80" height="14" rx="5"
               fill="rgba(255,255,255,0.08)" stroke="rgba(255,255,255,0.12)" strokeWidth="1"/>
-            <text x="210" y="274" textAnchor="middle"
+            <text x={midX} y={vpH - 6} textAnchor="middle"
               style={{ fontFamily: "'DM Sans',sans-serif", fontSize: '7px', fill: 'rgba(255,255,255,0.40)' }}>
               {tr.entrance}
             </text>
@@ -408,7 +412,8 @@ export function Screen2({ lang, dateStr, rawDate, timeStr, restaurantId, partySi
               return (
                 <g key={tb.id}
                   onClick={() => canClick && handleSelect(tb)}
-                  style={{ cursor: canClick ? 'pointer' : 'default' }}>
+                  onTouchEnd={(e) => { if (canClick) { e.preventDefault(); handleSelect(tb) } }}
+                  style={{ cursor: canClick ? 'pointer' : 'default', touchAction: 'manipulation' }}>
                   <rect
                     x={tb.x} y={tb.y} width={tb.w} height={tb.h} rx="9"
                     fill={fill} stroke={stroke}
@@ -432,7 +437,8 @@ export function Screen2({ lang, dateStr, rawDate, timeStr, restaurantId, partySi
               )
             })}
           </svg>
-        )}
+          )
+        })()}
       </div>
 
       {/* Selected table action card */}

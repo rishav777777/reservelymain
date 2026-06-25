@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -46,15 +47,12 @@ export default function LoginPage() {
     }
     setResetLoading(true)
     setError(null)
-    const supabase = createClient()
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/auth/callback?next=/reset-password`,
+    await fetch('/api/auth/reset-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
     })
-    if (error) {
-      setError(error.message)
-      setResetLoading(false)
-      return
-    }
+    // Always show success — never reveal whether the email exists
     setResetSent(true)
     setResetLoading(false)
   }
@@ -130,6 +128,13 @@ export default function LoginPage() {
               </button>
             )}
           </div>
+
+          <p className="text-center text-xs text-zinc-400 pt-1">
+            {tx.noAccount}{' '}
+            <Link href="/signup" className="text-zinc-600 hover:text-zinc-900 font-medium transition-colors">
+              {tx.signUpLink}
+            </Link>
+          </p>
         </form>
       </CardContent>
     </Card>

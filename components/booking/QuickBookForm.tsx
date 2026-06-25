@@ -350,7 +350,7 @@ export function QuickBookForm({
 }
 
 const PAGE: React.CSSProperties = {
-  minHeight: '100vh',
+  minHeight: '100dvh',
   background: '#F4F6F4',
   display: 'flex',
   alignItems: 'flex-start',

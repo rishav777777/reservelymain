@@ -32,6 +32,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       zones:  zones  ?? [],
       tables: tables ?? [],
+    }, {
+      headers: { 'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=120' },
     })
   } catch (err) {
     return NextResponse.json(
@@ -106,17 +108,32 @@ export async function POST(request: NextRequest) {
       await admin.from('floor_zones').delete().eq('restaurant_id', restaurantId)
     }
 
-    // ── Tables: upsert (preserve existing IDs so reservations stay linked) ─
-    if (tables?.length) {
-      const { data: existingTables } = await admin
-        .from('restaurant_tables')
-        .select('id, name')
-        .eq('restaurant_id', restaurantId)
+    // ── Tables: upsert + deactivate removed (preserve IDs so reservations stay linked) ─
+    const { data: existingTables } = await admin
+      .from('restaurant_tables')
+      .select('id, name')
+      .eq('restaurant_id', restaurantId)
 
-      const existingByName: Record<string, string> = {}
-      ;(existingTables ?? []).forEach((t: { id: string; name: string }) => {
-        existingByName[t.name] = t.id
-      })
+    const existingByName: Record<string, string> = {}
+    ;(existingTables ?? []).forEach((t: { id: string; name: string }) => {
+      existingByName[t.name] = t.id
+    })
+
+    if (tables?.length) {
+      const incomingNames = new Set(
+        (tables as Array<{ name: string }>).map(t => t.name)
+      )
+
+      // Deactivate tables removed from the layout (soft-delete preserves reservation history)
+      const toDeactivate = (existingTables ?? [])
+        .filter((t: { name: string }) => !incomingNames.has(t.name))
+        .map((t: { id: string }) => t.id)
+      if (toDeactivate.length) {
+        await admin
+          .from('restaurant_tables')
+          .update({ is_active: false })
+          .in('id', toDeactivate)
+      }
 
       for (const tb of tables as Array<{
         id: string; name: string; capacity: number; category: string;
@@ -128,11 +145,12 @@ export async function POST(request: NextRequest) {
           await admin
             .from('restaurant_tables')
             .update({
-              category: tb.category,
-              x: Math.round(tb.x),
-              y: Math.round(tb.y),
-              w: Math.round(tb.w),
-              h: Math.round(tb.h),
+              category:  tb.category,
+              x:         Math.round(tb.x),
+              y:         Math.round(tb.y),
+              w:         Math.round(tb.w),
+              h:         Math.round(tb.h),
+              is_active: true,
             })
             .eq('id', existingId)
         } else {
@@ -151,6 +169,15 @@ export async function POST(request: NextRequest) {
               is_active:     true,
             })
         }
+      }
+    } else {
+      // All tables removed — deactivate everything
+      const allIds = (existingTables ?? []).map((t: { id: string }) => t.id)
+      if (allIds.length) {
+        await admin
+          .from('restaurant_tables')
+          .update({ is_active: false })
+          .in('id', allIds)
       }
     }
 

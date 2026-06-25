@@ -95,7 +95,7 @@ export async function POST(request: NextRequest) {
     if (process.env.RESEND_API_KEY && process.env.ADMIN_NOTIFICATION_EMAIL) {
       const resend = new Resend(process.env.RESEND_API_KEY)
       await resend.emails.send({
-        from: 'Reservely <noreply@reservely.app>',
+        from: process.env.RESEND_FROM_EMAIL ?? 'onboarding@resend.dev',
         to: process.env.ADMIN_NOTIFICATION_EMAIL,
         subject: `New demo request — ${restaurantName}`,
         html: `

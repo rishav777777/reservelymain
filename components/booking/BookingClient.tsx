@@ -51,7 +51,7 @@ export function BookingClient({
 
   return (
     <div style={{
-      minHeight: "100vh",
+      minHeight: "100dvh",
       background: "linear-gradient(155deg, #071a0e 0%, #0D472B 45%, #0a3020 100%)",
       position: "relative",
       overflow: "hidden",
@@ -84,7 +84,7 @@ export function BookingClient({
 
         .bk-shell {
           position: relative; z-index: 1;
-          min-height: 100vh;
+          min-height: 100dvh;
           display: flex; flex-direction: column; align-items: center;
           padding: 0 16px 48px;
           overflow-y: auto; overflow-x: hidden; scrollbar-width: none;
