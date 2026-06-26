@@ -210,10 +210,17 @@ export function Screen3({
             <input value={phone} onChange={e => setPhone(e.target.value)}
               placeholder={tr.phone} type="tel" style={INPUT} autoComplete="tel" />
           </div>
-          <div className="bk-field" style={{ ...FIELD_WRAP }}>
-            <Mail size={15} color="rgba(52,211,153,0.70)" strokeWidth={2} style={{ flexShrink: 0 }} />
-            <input value={email} onChange={e => setEmail(e.target.value)}
-              placeholder={tr.email} type="email" style={INPUT} autoComplete="email" />
+          <div style={{ display: "flex", flexDirection: "column", gap: "5px" }}>
+            <div className="bk-field" style={{ ...FIELD_WRAP }}>
+              <Mail size={15} color="rgba(52,211,153,0.70)" strokeWidth={2} style={{ flexShrink: 0 }} />
+              <input value={email} onChange={e => setEmail(e.target.value)}
+                placeholder={tr.email} type="email" style={INPUT} autoComplete="email" />
+            </div>
+            <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "10px", color: "rgba(255,255,255,0.22)", margin: "0 4px", lineHeight: 1.4 }}>
+              {lang === "DE"
+                ? "Wird ausschließlich für Buchungsbestätigung und Erinnerungen verwendet."
+                : "Used only to send your booking confirmation and reminders."}
+            </p>
           </div>
           <div className="bk-field" style={{ ...FIELD_WRAP, alignItems: "flex-start", padding: "13px 16px" }}>
             <MessageSquare size={15} color="rgba(52,211,153,0.70)" strokeWidth={2} style={{ flexShrink: 0, marginTop: "2px" }} />
