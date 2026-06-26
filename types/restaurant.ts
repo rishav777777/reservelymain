@@ -21,6 +21,9 @@ export interface Restaurant {
   wa_notifications:  boolean | null
   wa_daily_summary:  boolean | null
   setup_completed:   boolean | null
+  // Booking policy (migration 018)
+  max_covers_per_slot:   number | null
+  default_duration_minutes: number | null
   // Stripe / billing (migration 017)
   stripe_customer_id:      string | null
   stripe_subscription_id:  string | null

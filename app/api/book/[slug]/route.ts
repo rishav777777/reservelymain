@@ -96,7 +96,7 @@ export async function POST(
   // Look up restaurant by slug
   const { data: restaurant } = await admin
     .from('restaurants')
-    .select('id, name, booking_enabled, max_party_size')
+    .select('id, name, booking_enabled, max_party_size, max_covers_per_slot, default_duration_minutes')
     .eq('slug', slug)
     .single()
 
@@ -111,6 +111,29 @@ export async function POST(
       { error: `Maximum party size is ${restaurant.max_party_size}` },
       { status: 422 }
     )
+  }
+
+  // Capacity check: count covers already booked at this timeslot (±0 min — exact match)
+  if (restaurant.max_covers_per_slot) {
+    const { data: slotRes } = await admin
+      .from('reservations')
+      .select('party_size')
+      .eq('restaurant_id', restaurant.id)
+      .eq('reservation_date', reservation_date)
+      .eq('reservation_time', reservation_time)
+      .in('status', ['pending', 'confirmed', 'arrived'])
+
+    const coveredSoFar = (slotRes ?? []).reduce((sum: number, r: { party_size: number }) => sum + r.party_size, 0)
+    if (coveredSoFar + party_size > restaurant.max_covers_per_slot) {
+      return NextResponse.json(
+        {
+          error: `This time slot is fully booked (${coveredSoFar}/${restaurant.max_covers_per_slot} covers taken). Please choose a different time or join the waitlist.`,
+          waitlist_eligible: true,
+          slot_full: true,
+        },
+        { status: 409 }
+      )
+    }
   }
 
   // Cryptographic reference code (not Math.random)
@@ -133,7 +156,7 @@ export async function POST(
       party_size,
       reservation_date,
       reservation_time,
-      duration_minutes,
+      duration_minutes: duration_minutes || restaurant.default_duration_minutes || 90,
       status:           'pending',
       source:           'guest_portal',
       menu_preference:  menu_preference || null,

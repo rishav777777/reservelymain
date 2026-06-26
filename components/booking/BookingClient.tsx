@@ -18,12 +18,14 @@ interface BookingClientProps {
   advanceBookingDays?: number
   openingHoursMap?:    Record<number, { open: string; last: string | null }>
   maxPartySize?:       number
+  defaultDuration?:    number
   demoMode?:           boolean
 }
 
 export function BookingClient({
   restaurantId, restaurantSlug, restaurantName,
   closedDays, advanceBookingDays, openingHoursMap, maxPartySize,
+  defaultDuration = 90,
   demoMode = false,
 }: BookingClientProps) {
   const [screen,    setScreen]    = useState<Screen>("date");
@@ -268,6 +270,7 @@ export function BookingClient({
                 restaurantSlug={restaurantSlug}
                 sessionId={sessionId}
                 demoMode={demoMode}
+                durationMinutes={defaultDuration}
                 onBack={() => setScreen("table")}
               />
             )}

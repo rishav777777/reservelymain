@@ -7,7 +7,7 @@ import { UserRole } from '@/types'
 import {
   CalendarDays, CalendarRange, LayoutGrid,
   Repeat2, Users2, Users, MessageSquare, BarChart2,
-  UserCog, CreditCard, Settings, LogOut, Wifi, WifiOff,
+  UserCog, CreditCard, Settings, LogOut, Wifi, WifiOff, Clock,
 } from 'lucide-react'
 import { useLang } from '@/components/i18n/LanguageProvider'
 import { LanguageToggle } from '@/components/i18n/LanguageToggle'
@@ -46,6 +46,7 @@ export function DashboardShell({ children, userRole, restaurantName, userName, w
       items: [
         { href: '/dashboard',               label: items.todaysView,  icon: CalendarDays,  exact: true },
         { href: '/dashboard/reservations',  label: items.allBookings, icon: CalendarRange },
+        { href: '/dashboard/waitlist',      label: 'Waitlist',        icon: Clock,         notStaff: true },
         { href: '/dashboard/layout-editor', label: items.floorPlan,   icon: LayoutGrid,    minRole: 'manager' as const },
       ],
     },

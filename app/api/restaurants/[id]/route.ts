@@ -5,6 +5,7 @@ const ALLOWED_FIELDS = new Set([
   'name', 'description', 'address', 'phone', 'email',
   'cuisine_type', 'city', 'cover_image_url',
   'timezone', 'booking_enabled', 'max_party_size',
+  'max_covers_per_slot', 'default_duration_minutes',
   'owner_whatsapp', 'wa_notifications', 'wa_daily_summary',
   'setup_completed',
 ])

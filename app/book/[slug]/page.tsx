@@ -17,7 +17,7 @@ export default async function BookSlugPage({ params }: Props) {
 
   const { data: restaurant } = await admin
     .from('restaurants')
-    .select('id, name, booking_enabled, advance_booking_days, max_party_size')
+    .select('id, name, booking_enabled, advance_booking_days, max_party_size, max_covers_per_slot, default_duration_minutes')
     .eq('slug', slug)
     .single()
 
@@ -93,6 +93,7 @@ export default async function BookSlugPage({ params }: Props) {
           advanceBookingDays={restaurant.advance_booking_days ?? 90}
           openingHoursMap={openingHoursMap}
           maxPartySize={restaurant.max_party_size ?? undefined}
+          defaultDuration={restaurant.default_duration_minutes ?? 90}
         />
       </div>
       <footer className="py-4 px-6 border-t border-zinc-100 bg-white">

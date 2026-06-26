@@ -114,9 +114,11 @@ export function SettingsClient({ restaurant, isOwner = false }: Props) {
   })
 
   const [booking, setBooking] = useState({
-    timezone:        restaurant?.timezone        ?? 'Europe/Berlin',
-    booking_enabled: restaurant?.booking_enabled ?? true,
-    max_party_size:  restaurant?.max_party_size  ?? 20,
+    timezone:                  restaurant?.timezone                  ?? 'Europe/Berlin',
+    booking_enabled:           restaurant?.booking_enabled           ?? true,
+    max_party_size:            restaurant?.max_party_size            ?? 20,
+    max_covers_per_slot:       restaurant?.max_covers_per_slot       ?? null as number | null,
+    default_duration_minutes:  restaurant?.default_duration_minutes  ?? 90,
   })
 
   const [whatsapp, setWhatsapp] = useState({
@@ -394,8 +396,51 @@ export function SettingsClient({ restaurant, isOwner = false }: Props) {
                 </div>
               </FieldRow>
 
+              <div className="border-t border-zinc-100" />
+
+              <FieldRow
+                label="Max covers per time slot"
+                hint="Limits the total number of guests that can book in the same time slot. Leave blank for no limit."
+              >
+                <div className="flex items-center gap-3">
+                  <Input
+                    type="number"
+                    min={1}
+                    max={500}
+                    placeholder="No limit"
+                    value={booking.max_covers_per_slot ?? ''}
+                    onChange={e => setBooking(p => ({ ...p, max_covers_per_slot: e.target.value ? Number(e.target.value) : null }))}
+                    className="h-10 w-24 text-center text-base font-semibold"
+                  />
+                  <span className="text-sm text-zinc-400">covers / slot</span>
+                </div>
+              </FieldRow>
+
+              <FieldRow
+                label="Default reservation duration"
+                hint="How long a table is reserved by default. Used to estimate departure time for guests."
+              >
+                <div className="flex items-center gap-3">
+                  <Input
+                    type="number"
+                    min={30}
+                    max={360}
+                    step={15}
+                    value={booking.default_duration_minutes}
+                    onChange={e => setBooking(p => ({ ...p, default_duration_minutes: Number(e.target.value) }))}
+                    className="h-10 w-24 text-center text-base font-semibold"
+                  />
+                  <span className="text-sm text-zinc-400">minutes</span>
+                </div>
+              </FieldRow>
+
               <Button
-                onClick={() => save({ booking_enabled: booking.booking_enabled, max_party_size: booking.max_party_size })}
+                onClick={() => save({
+                  booking_enabled: booking.booking_enabled,
+                  max_party_size: booking.max_party_size,
+                  max_covers_per_slot: booking.max_covers_per_slot,
+                  default_duration_minutes: booking.default_duration_minutes,
+                })}
                 disabled={saving}
                 className="bg-[#E63946] hover:bg-[#c1121f] text-white"
               >

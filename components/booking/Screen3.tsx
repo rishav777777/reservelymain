@@ -18,6 +18,7 @@ interface Props {
   sessionId: string;
   demoMode?: boolean;
   onBack: () => void;
+  durationMinutes?: number;
 }
 
 const CARD: React.CSSProperties = {
@@ -53,20 +54,30 @@ function parseTimeFrom(timeStr: string): string {
   return timeStr.split("–")[0].trim().slice(0, 5);
 }
 
+function addMinutes(hhmm: string, mins: number): string {
+  const [h, m] = hhmm.split(":").map(Number);
+  const total = h * 60 + m + mins;
+  return `${String(Math.floor(total / 60) % 24).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
+}
+
 export function Screen3({
   lang, dateStr, rawDate, timeStr, tableId, tableName,
   seats, restaurantSlug, sessionId, demoMode = false,
+  durationMinutes = 90,
 }: Props) {
   const tr = t[lang];
 
-  const [name,        setName]        = useState("");
-  const [phone,       setPhone]       = useState("");
-  const [email,       setEmail]       = useState("");
-  const [notes,       setNotes]       = useState("");
-  const [consented,   setConsented]   = useState(false);
-  const [sending,     setSending]     = useState(false);
-  const [success,     setSuccess]     = useState(false);
-  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [name,          setName]          = useState("");
+  const [phone,         setPhone]         = useState("");
+  const [email,         setEmail]         = useState("");
+  const [notes,         setNotes]         = useState("");
+  const [consented,     setConsented]     = useState(false);
+  const [sending,       setSending]       = useState(false);
+  const [success,       setSuccess]       = useState(false);
+  const [submitError,   setSubmitError]   = useState<string | null>(null);
+  const [slotFull,      setSlotFull]      = useState(false);
+  const [waitlistSent,  setWaitlistSent]  = useState(false);
+  const [waitlistSending, setWaitlistSending] = useState(false);
 
   const canSubmit = name.trim().length > 0 && phone.trim().length > 0
     && email.trim().length > 0 && consented;
@@ -96,7 +107,7 @@ export function Screen3({
           reservation_time: parseTimeFrom(timeStr),
           table_id:         tableId || null,
           notes:            notes.trim() || null,
-          duration_minutes: 90,
+          duration_minutes: durationMinutes,
           guest_consented:  true,
           session_id:       sessionId,
         }),
@@ -106,9 +117,14 @@ export function Screen3({
       setSending(false);
 
       if (!res.ok) {
-        setSubmitError(data.error ?? (lang === "DE"
-          ? "Etwas ist schiefgelaufen. Bitte versuche es erneut."
-          : "Something went wrong. Please try again."));
+        if (data.slot_full) {
+          setSlotFull(true);
+          setSubmitError(null);
+        } else {
+          setSubmitError(data.error ?? (lang === "DE"
+            ? "Etwas ist schiefgelaufen. Bitte versuche es erneut."
+            : "Something went wrong. Please try again."));
+        }
         return;
       }
     } catch {
@@ -150,12 +166,17 @@ export function Screen3({
             {lang === "DE" ? "Deine Reservierung" : "Your reservation"}
           </p>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-            {[
-              { icon: Calendar, label: tr.date,    value: dateStr },
-              { icon: Clock,    label: tr.time,    value: parseTimeFrom(timeStr) },
-              { icon: Armchair, label: tr.table,   value: tableName },
-              { icon: Users,    label: tr.persons, value: `${seats}` },
-            ].map(({ icon: Icon, label, value }) => (
+            {(() => {
+              const startTime = parseTimeFrom(timeStr);
+              const departureTime = addMinutes(startTime, durationMinutes);
+              return [
+                { icon: Calendar, label: tr.date,    value: dateStr },
+                { icon: Clock,    label: tr.time,    value: startTime },
+                { icon: Armchair, label: tr.table,   value: tableName },
+                { icon: Users,    label: tr.persons, value: `${seats}` },
+                { icon: Clock,    label: lang === "DE" ? "Abreise ca." : "Est. departure", value: departureTime },
+              ];
+            })().map(({ icon: Icon, label, value }) => (
               <div key={label} style={{
                 background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)",
                 borderRadius: "12px", padding: "10px 12px",
@@ -227,14 +248,77 @@ export function Screen3({
           </label>
         </div>
 
-        {submitError && (
+        {submitError && !slotFull && (
           <div style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.20)", borderRadius: "12px", padding: "12px 16px" }}>
             <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "13px", color: "#fca5a5", margin: 0 }}>{submitError}</p>
           </div>
         )}
 
+        {/* Slot full — waitlist offer */}
+        {slotFull && !waitlistSent && (
+          <div style={{ background: "rgba(251,191,36,0.08)", border: "1px solid rgba(251,191,36,0.25)", borderRadius: "14px", padding: "18px" }}>
+            <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "14px", fontWeight: 700, color: "#FCD34D", margin: "0 0 6px" }}>
+              {lang === "DE" ? "Dieser Slot ist leider voll" : "This time slot is fully booked"}
+            </p>
+            <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "13px", color: "rgba(255,255,255,0.55)", margin: "0 0 14px", lineHeight: 1.5 }}>
+              {lang === "DE"
+                ? "Möchtest du auf die Warteliste? Das Restaurant benachrichtigt dich, wenn ein Platz frei wird."
+                : "Would you like to join the waitlist? The restaurant will contact you if a spot opens up."}
+            </p>
+            <button
+              onClick={async () => {
+                if (waitlistSending) return;
+                setWaitlistSending(true);
+                try {
+                  const res = await fetch(`/api/waitlist/${restaurantSlug}`, {
+                    method:  "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      guest_name:     name.trim(),
+                      guest_email:    email.trim(),
+                      guest_phone:    phone.trim() || null,
+                      party_size:     seats,
+                      requested_date: rawDate,
+                      requested_time: parseTimeFrom(timeStr),
+                      notes:          notes.trim() || null,
+                    }),
+                  });
+                  if (res.ok) setWaitlistSent(true);
+                } catch { /* ignore */ }
+                setWaitlistSending(false);
+              }}
+              disabled={waitlistSending || !name.trim() || !email.trim()}
+              style={{
+                padding: "11px 22px", borderRadius: "12px",
+                background: "linear-gradient(135deg, #F59E0B, #D97706)",
+                border: "none", color: "#1C0A00",
+                fontFamily: "'DM Sans', sans-serif", fontSize: "13px", fontWeight: 700,
+                cursor: waitlistSending ? "not-allowed" : "pointer",
+                opacity: waitlistSending ? 0.6 : 1,
+              }}
+            >
+              {waitlistSending
+                ? (lang === "DE" ? "Wird eingetragen…" : "Adding you…")
+                : (lang === "DE" ? "Auf Warteliste eintragen" : "Join the waitlist")}
+            </button>
+          </div>
+        )}
+
+        {waitlistSent && (
+          <div style={{ background: "rgba(52,211,153,0.08)", border: "1px solid rgba(52,211,153,0.25)", borderRadius: "14px", padding: "18px", textAlign: "center" }}>
+            <p style={{ fontFamily: "'DM Serif Display', serif", fontSize: "18px", color: "#34D399", margin: "0 0 6px" }}>
+              {lang === "DE" ? "Du stehst auf der Warteliste!" : "You're on the waitlist!"}
+            </p>
+            <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "13px", color: "rgba(255,255,255,0.55)", margin: 0, lineHeight: 1.5 }}>
+              {lang === "DE"
+                ? "Das Restaurant kontaktiert dich per E-Mail, sobald ein Platz frei wird."
+                : "The restaurant will contact you by email if a spot becomes available."}
+            </p>
+          </div>
+        )}
+
         {/* Submit */}
-        <button
+        {!slotFull && !waitlistSent && <button
           onClick={handleSubmit}
           disabled={!canSubmit || sending || success}
           style={{
@@ -272,7 +356,7 @@ export function Screen3({
               {tr.submit}
             </>
           )}
-        </button>
+        </button>}
       </div>
     </>
   );

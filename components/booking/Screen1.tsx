@@ -246,27 +246,52 @@ export function Screen1({
             {tr?.chooseTime || (lang === "DE" ? "Uhrzeit wählen" : "Select a time")}
           </p>
 
-          <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-            {availableTimes.map(time => {
-              const active = selTime === time;
-              return (
-                <button key={time} onClick={() => setSelTime(time)} style={{
-                  padding: "9px 16px", borderRadius: "12px",
-                  background: active ? "linear-gradient(135deg, #34D399 0%, #059669 100%)" : "rgba(255,255,255,0.07)",
-                  border: active ? "1px solid rgba(52,211,153,0.60)" : "1px solid rgba(255,255,255,0.10)",
-                  color: active ? "#022c22" : "#fff",
-                  fontFamily: "'DM Serif Display', serif", fontSize: "16px",
-                  fontWeight: active ? 700 : 400,
-                  cursor: "pointer",
-                  boxShadow: active ? "0 0 14px rgba(52,211,153,0.35)" : "none",
-                  transition: "all .12s ease",
-                  letterSpacing: "-0.01em",
-                }}>
-                  {time}
-                </button>
-              );
-            })}
-          </div>
+          {(() => {
+            const LUNCH_CUTOFF = 15 * 60; // 15:00 in minutes
+            const lunch  = availableTimes.filter(t => { const [h, m] = t.split(":").map(Number); return h * 60 + m < LUNCH_CUTOFF; });
+            const dinner = availableTimes.filter(t => { const [h, m] = t.split(":").map(Number); return h * 60 + m >= LUNCH_CUTOFF; });
+            const sections = [
+              { label: lang === "DE" ? "🌤 Mittagessen" : "🌤 Lunch",  times: lunch },
+              { label: lang === "DE" ? "🌙 Abendessen"  : "🌙 Dinner", times: dinner },
+            ].filter(s => s.times.length > 0);
+
+            return (
+              <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                {sections.map(section => (
+                  <div key={section.label}>
+                    <p style={{
+                      fontFamily: "'DM Sans', sans-serif", fontSize: "9px", fontWeight: 700,
+                      color: "rgba(255,255,255,0.22)", textTransform: "uppercase", letterSpacing: "0.10em",
+                      margin: "0 0 10px",
+                    }}>
+                      {section.label}
+                    </p>
+                    <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                      {section.times.map(time => {
+                        const active = selTime === time;
+                        return (
+                          <button key={time} onClick={() => setSelTime(time)} style={{
+                            padding: "9px 16px", borderRadius: "12px",
+                            background: active ? "linear-gradient(135deg, #34D399 0%, #059669 100%)" : "rgba(255,255,255,0.07)",
+                            border: active ? "1px solid rgba(52,211,153,0.60)" : "1px solid rgba(255,255,255,0.10)",
+                            color: active ? "#022c22" : "#fff",
+                            fontFamily: "'DM Serif Display', serif", fontSize: "16px",
+                            fontWeight: active ? 700 : 400,
+                            cursor: "pointer",
+                            boxShadow: active ? "0 0 14px rgba(52,211,153,0.35)" : "none",
+                            transition: "all .12s ease",
+                            letterSpacing: "-0.01em",
+                          }}>
+                            {time}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
         </div>
       )}
 
