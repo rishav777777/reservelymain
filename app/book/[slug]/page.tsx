@@ -15,11 +15,33 @@ export default async function BookSlugPage({ params }: Props) {
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   )
 
-  const { data: restaurant } = await admin
+  type Restaurant = {
+    id: string
+    name: string
+    booking_enabled: boolean
+    advance_booking_days: number | null
+    max_party_size: number | null
+    default_duration_minutes?: number | null
+  }
+
+  const { data: r1, error: e1 } = await admin
     .from('restaurants')
-    .select('id, name, booking_enabled, advance_booking_days, max_party_size, max_covers_per_slot, default_duration_minutes')
+    .select('id, name, booking_enabled, advance_booking_days, max_party_size, default_duration_minutes')
     .eq('slug', slug)
     .single()
+
+  let restaurant: Restaurant | null
+  if (e1?.message?.toLowerCase().includes('does not exist')) {
+    // default_duration_minutes column not yet added — fall back to base columns
+    const { data: r2 } = await admin
+      .from('restaurants')
+      .select('id, name, booking_enabled, advance_booking_days, max_party_size')
+      .eq('slug', slug)
+      .single()
+    restaurant = r2 as Restaurant | null
+  } else {
+    restaurant = r1 as Restaurant | null
+  }
 
   if (!restaurant) notFound()
 

@@ -93,12 +93,33 @@ export async function POST(
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   )
 
-  // Look up restaurant by slug
-  const { data: restaurant } = await admin
+  // Look up restaurant by slug — fall back to base columns if migration not yet applied
+  type RestaurantRow = {
+    id: string
+    name: string
+    booking_enabled: boolean
+    max_party_size: number | null
+    max_covers_per_slot?: number | null
+    default_duration_minutes?: number | null
+  }
+
+  const { data: r1, error: re1 } = await admin
     .from('restaurants')
     .select('id, name, booking_enabled, max_party_size, max_covers_per_slot, default_duration_minutes')
     .eq('slug', slug)
     .single()
+
+  let restaurant: RestaurantRow | null
+  if (re1?.message?.toLowerCase().includes('does not exist')) {
+    const { data: r2 } = await admin
+      .from('restaurants')
+      .select('id, name, booking_enabled, max_party_size')
+      .eq('slug', slug)
+      .single()
+    restaurant = r2 as RestaurantRow | null
+  } else {
+    restaurant = r1 as RestaurantRow | null
+  }
 
   if (!restaurant) {
     return NextResponse.json({ error: 'Restaurant not found' }, { status: 404 })
