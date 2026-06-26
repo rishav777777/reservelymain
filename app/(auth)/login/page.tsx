@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { Suspense, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
@@ -11,10 +11,21 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { useLang } from '@/components/i18n/LanguageProvider'
 import { dashboardT } from '@/lib/i18n/dashboardT'
 
+// Isolated so useSearchParams is inside a Suspense boundary
+function PendingNotice() {
+  const searchParams = useSearchParams()
+  const { lang } = useLang()
+  const tx = dashboardT[lang].login
+  if (searchParams.get('reason') !== 'suspended') return null
+  return (
+    <div className="mb-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2.5">
+      <p className="text-xs text-amber-800 leading-relaxed">{tx.pendingNotice}</p>
+    </div>
+  )
+}
+
 export default function LoginPage() {
   const router = useRouter()
-  const searchParams = useSearchParams()
-  const reason = searchParams.get('reason')
   const { lang } = useLang()
   const tx = dashboardT[lang].login
   const [email, setEmail]           = useState('')
@@ -54,7 +65,6 @@ export default function LoginPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email }),
     })
-    // Always show success — never reveal whether the email exists
     setResetSent(true)
     setResetLoading(false)
   }
@@ -74,11 +84,9 @@ export default function LoginPage() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        {reason === 'suspended' && (
-          <div className="mb-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2.5">
-            <p className="text-xs text-amber-800 leading-relaxed">{tx.pendingNotice}</p>
-          </div>
-        )}
+        <Suspense>
+          <PendingNotice />
+        </Suspense>
         <form onSubmit={handleSignIn} className="space-y-3">
           <div className="space-y-1">
             <Label htmlFor="email" className="text-xs font-medium text-gray-700">{tx.email}</Label>
