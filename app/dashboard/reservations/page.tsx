@@ -35,23 +35,24 @@ export default function ReservationsPage() {
   const [restaurantName, setRestaurantName] = useState('')
 
   const fetchReservations = useCallback(async () => {
-    // Fetch restaurant name alongside reservations
     const { data: profile } = await supabase
       .from('profiles')
       .select('restaurant_id')
       .single()
-    if (profile?.restaurant_id) {
-      const { data: rest } = await supabase
-        .from('restaurants')
-        .select('name')
-        .eq('id', profile.restaurant_id)
-        .single()
-      if (rest?.name) setRestaurantName(rest.name)
-    }
+
+    if (!profile?.restaurant_id) { setLoading(false); return }
+
+    const { data: rest } = await supabase
+      .from('restaurants')
+      .select('name')
+      .eq('id', profile.restaurant_id)
+      .single()
+    if (rest?.name) setRestaurantName(rest.name)
 
     const { data, error } = await supabase
       .from('reservations')
       .select('*')
+      .eq('restaurant_id', profile.restaurant_id)
       .order('reservation_time', { ascending: true })
 
     if (error) { setFetchError(error.message); setLoading(false); return }

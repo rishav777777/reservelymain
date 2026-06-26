@@ -10,8 +10,9 @@ export default async function AnalyticsPage() {
   if (!user) redirect('/login')
 
   const { data: profile } = await supabase
-    .from('profiles').select('role').eq('id', user.id).single()
+    .from('profiles').select('restaurant_id, role').eq('id', user.id).single()
   if (profile?.role === 'staff') redirect('/dashboard')
+  if (!profile?.restaurant_id) redirect('/login')
 
   const fromDate = new Date()
   fromDate.setDate(fromDate.getDate() - DAYS)
@@ -20,6 +21,7 @@ export default async function AnalyticsPage() {
   const { data: rows } = await supabase
     .from('reservations')
     .select('reservation_date, reservation_time, is_walk_in, status')
+    .eq('restaurant_id', profile.restaurant_id)
     .gte('reservation_date', fromStr)
     .order('reservation_date', { ascending: true })
 
