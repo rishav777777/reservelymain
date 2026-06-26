@@ -1,7 +1,15 @@
 import { createClient } from '@/lib/supabase/server'
+import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { logAction } from '@/lib/audit'
 import { resourceLimiter, getClientIp } from '@/lib/ratelimit'
 import { NextRequest, NextResponse } from 'next/server'
+
+function getAdmin() {
+  return createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
+}
 
 // GET /api/reservations/tables?date=2026-06-15&time=19:00&duration=90&restaurantId=xxx
 //
@@ -34,15 +42,29 @@ export async function GET(request: NextRequest) {
   const restaurantId = searchParams.get('restaurantId')
 
   // List mode: no `time` param → return reservations for a date (or all dates)
+  // Only accessible to authenticated users for their own restaurant.
   if (!time) {
-    if (!restaurantId) {
-      return NextResponse.json({ error: 'restaurantId required' }, { status: 400 })
-    }
     const supabase = await createClient()
-    let query = supabase
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('restaurant_id')
+      .eq('id', user.id)
+      .single()
+
+    if (!profile?.restaurant_id) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+
+    // Ignore any client-supplied restaurantId — always use the authenticated user's own
+    const ownRestaurantId = profile.restaurant_id
+    const admin = getAdmin()
+    let query = admin
       .from('reservations')
       .select('*, restaurant_tables(name, capacity, category)')
-      .eq('restaurant_id', restaurantId)
+      .eq('restaurant_id', ownRestaurantId)
       .order('reservation_date', { ascending: true })
       .order('reservation_time', { ascending: true })
 
@@ -54,14 +76,15 @@ export async function GET(request: NextRequest) {
   }
 
   // Table availability mode: requires date + time + restaurantId
+  // Uses service-role client so it works for anonymous booking portal guests.
   if (!date || !restaurantId) {
     return NextResponse.json({ error: 'date, time, restaurantId required' }, { status: 400 })
   }
 
-  const supabase = await createClient()
+  const admin = getAdmin()
 
   // 1. All active tables for this restaurant
-  const { data: tables, error: tErr } = await supabase
+  const { data: tables, error: tErr } = await admin
     .from('restaurant_tables')
     .select('id, name, capacity, category')
     .eq('restaurant_id', restaurantId)
@@ -71,7 +94,7 @@ export async function GET(request: NextRequest) {
   if (tErr) return NextResponse.json({ error: tErr.message }, { status: 500 })
 
   // 2. Confirmed/arrived reservations that day
-  const { data: confirmedRes } = await supabase
+  const { data: confirmedRes } = await admin
     .from('reservations')
     .select('table_id, reservation_time, duration_minutes')
     .eq('restaurant_id', restaurantId)
@@ -79,7 +102,7 @@ export async function GET(request: NextRequest) {
     .in('status', ['confirmed', 'arrived'])
 
   // 3. Active (non-expired) holds that day
-  const { data: holds } = await supabase
+  const { data: holds } = await admin
     .from('table_holds')
     .select('table_id, reservation_time, duration_minutes, session_id')
     .eq('restaurant_id', restaurantId)
