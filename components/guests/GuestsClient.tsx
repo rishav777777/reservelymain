@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { GuestProfile } from '@/types'
 import { toast } from 'sonner'
-import { Search, Star, X, ChevronRight, Users, CalendarDays, Phone, Mail } from 'lucide-react'
+import { Search, Star, X, ChevronRight, Users, CalendarDays, Phone, Mail, AlertTriangle } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 import { Button } from '@/components/ui/button'
@@ -172,11 +172,19 @@ export function GuestsClient({ restaurantId }: Props) {
                     {g.is_stammgast && (
                       <Star size={10} className="text-amber-400 fill-amber-400 shrink-0" />
                     )}
+                    {(g.no_show_count ?? 0) >= 2 && (
+                      <span title={`${g.no_show_count} no-shows — repeat offender`}>
+                        <AlertTriangle size={10} className="text-red-500 shrink-0" />
+                      </span>
+                    )}
                   </div>
                   <p className="text-xs text-zinc-400 truncate">{g.email}</p>
                   <p className="text-xs text-zinc-400">
                     {tx.visits(g.visit_count)}
                     {g.last_visit && ` · ${tx.lastVisit} ${new Date(g.last_visit).toLocaleDateString(locale, { day: 'numeric', month: 'short' })}`}
+                    {(g.no_show_count ?? 0) > 0 && (
+                      <span className="text-red-500"> · {g.no_show_count} no-show{(g.no_show_count ?? 0) > 1 ? 's' : ''}</span>
+                    )}
                   </p>
                 </div>
 
@@ -205,8 +213,18 @@ export function GuestsClient({ restaurantId }: Props) {
                       <Star size={9} className="fill-amber-400 text-amber-400" /> {tx.detail.stammgast}
                     </span>
                   )}
+                  {(selected.no_show_count ?? 0) >= 2 && (
+                    <span className="text-xs bg-red-50 text-red-600 ring-1 ring-red-200 font-medium px-1.5 py-0.5 rounded-full flex items-center gap-1">
+                      <AlertTriangle size={9} /> Repeat no-show
+                    </span>
+                  )}
                 </div>
-                <p className="text-xs text-zinc-400">{tx.visits(selected.visit_count)}</p>
+                <p className="text-xs text-zinc-400">
+                  {tx.visits(selected.visit_count)}
+                  {(selected.no_show_count ?? 0) > 0 && (
+                    <span className="text-red-500"> · {selected.no_show_count} no-show{(selected.no_show_count ?? 0) > 1 ? 's' : ''}</span>
+                  )}
+                </p>
               </div>
             </div>
             <button onClick={() => setSelected(null)} className="p-1.5 hover:bg-zinc-100 rounded-md text-zinc-400">

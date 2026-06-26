@@ -5,9 +5,9 @@ import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { UserRole } from '@/types'
 import {
-  CalendarDays, CalendarRange, LayoutGrid, AlignLeft,
+  CalendarDays, CalendarRange, LayoutGrid,
   Repeat2, Users2, Users, MessageSquare, BarChart2,
-  UserCog, CreditCard, Settings, Zap, LogOut, Wifi, WifiOff,
+  UserCog, CreditCard, Settings, LogOut, Wifi, WifiOff,
 } from 'lucide-react'
 import { useLang } from '@/components/i18n/LanguageProvider'
 import { LanguageToggle } from '@/components/i18n/LanguageToggle'
@@ -45,9 +45,7 @@ export function DashboardShell({ children, userRole, restaurantName, userName, w
       title: tx.nav.groups.daily,
       items: [
         { href: '/dashboard',               label: items.todaysView,  icon: CalendarDays,  exact: true },
-        { href: '/dashboard/quick',         label: items.quickAdd,    icon: Zap },
         { href: '/dashboard/reservations',  label: items.allBookings, icon: CalendarRange },
-        { href: '/dashboard/timeline',      label: items.timeline,    icon: AlignLeft },
         { href: '/dashboard/layout-editor', label: items.floorPlan,   icon: LayoutGrid,    minRole: 'manager' as const },
       ],
     },

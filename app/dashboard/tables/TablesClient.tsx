@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
-import { Plus, ImageIcon } from 'lucide-react'
+import { Plus, ImageIcon, Power, PowerOff } from 'lucide-react'
 import { toast } from 'sonner'
 import { TableDetailPanel } from '@/components/dashboard/tables/TableDetailPanel'
 import { useLang } from '@/components/i18n/LanguageProvider'
@@ -47,6 +47,26 @@ export function TablesClient({ tables: initial, restaurantId, userRole }: Tables
   const [capacity, setCapacity] = useState(2)
   const [category, setCategory] = useState('Indoor')
   const [saving, setSaving] = useState(false)
+  const [toggling, setToggling] = useState<string | null>(null)
+
+  async function handleToggleBlock(t: RestaurantTable) {
+    setToggling(t.id)
+    try {
+      const res = await fetch(`/api/tables/${t.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_active: !t.is_active }),
+      })
+      if (!res.ok) { toast.error('Failed to update table'); return }
+      const updated = await res.json()
+      setTables(prev => prev.map(x => x.id === updated.id ? updated : x))
+      toast.success(updated.is_active ? 'Table unblocked' : 'Table blocked')
+    } catch {
+      toast.error('Failed to update table')
+    } finally {
+      setToggling(null)
+    }
+  }
 
   function openPanel(table: RestaurantTable) {
     setSelectedTable(table)
@@ -144,10 +164,24 @@ export function TablesClient({ tables: initial, restaurantId, userRole }: Tables
                         </button>
                         <span className="text-gray-600 w-20 shrink-0">{tx.guests(t.capacity)}</span>
                         <span className="flex-1">
-                          <span className={`px-2 py-0.5 rounded-full font-medium ${t.is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>
+                          <span className={`px-2 py-0.5 rounded-full font-medium ${t.is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-600'}`}>
                             {t.is_active ? tx.active : tx.inactive}
                           </span>
                         </span>
+                        {canManage && (
+                          <button
+                            onClick={() => handleToggleBlock(t)}
+                            disabled={toggling === t.id}
+                            title={t.is_active ? 'Block table' : 'Unblock table'}
+                            className={`p-1.5 rounded transition-colors disabled:opacity-40 ${
+                              t.is_active
+                                ? 'text-zinc-400 hover:text-red-500 hover:bg-red-50'
+                                : 'text-red-400 hover:text-emerald-600 hover:bg-emerald-50'
+                            }`}
+                          >
+                            {t.is_active ? <PowerOff size={13} /> : <Power size={13} />}
+                          </button>
+                        )}
                       </div>
                     )
                   })}

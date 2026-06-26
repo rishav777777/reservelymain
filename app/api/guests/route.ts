@@ -31,5 +31,29 @@ export async function GET(request: NextRequest) {
   const { data, error } = await query
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  return NextResponse.json(data ?? [])
+  const guests = data ?? []
+
+  // Attach no_show_count by counting reservations with status='no_show' per guest email
+  if (guests.length > 0) {
+    const emails = guests.map((g: { email: string }) => g.email)
+    const { data: noShows } = await supabase
+      .from('reservations')
+      .select('guest_email')
+      .eq('restaurant_id', restaurantId)
+      .eq('status', 'no_show')
+      .in('guest_email', emails)
+
+    const noShowMap: Record<string, number> = {}
+    for (const row of noShows ?? []) {
+      noShowMap[row.guest_email] = (noShowMap[row.guest_email] ?? 0) + 1
+    }
+
+    const enriched = guests.map((g: { email: string }) => ({
+      ...g,
+      no_show_count: noShowMap[g.email] ?? 0,
+    }))
+    return NextResponse.json(enriched)
+  }
+
+  return NextResponse.json(guests)
 }

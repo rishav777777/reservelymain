@@ -13,7 +13,7 @@ import { WalkInModal } from '@/components/walkin/WalkInModal'
 import { CreateReservationModal } from '@/components/reservations/CreateReservationModal'
 import {
   Plus, CalendarPlus, ChevronLeft, ChevronRight,
-  Check, AlertTriangle, Info, Link as LinkIcon, Copy, CheckCheck,
+  Check, AlertTriangle, Info, Link as LinkIcon, Copy, CheckCheck, Zap,
 } from 'lucide-react'
 import { useLang } from '@/components/i18n/LanguageProvider'
 import { dashboardT } from '@/lib/i18n/dashboardT'
@@ -286,6 +286,12 @@ export function DashboardClient({
             </div>
 
             <div className="flex items-center gap-2">
+              <a
+                href="/dashboard/quick"
+                className="flex items-center gap-1.5 border border-zinc-200 bg-white hover:bg-zinc-50 text-zinc-600 text-xs font-medium px-3 py-1.5 rounded-md transition-colors"
+              >
+                <Zap size={12} /> {tx.quickMode ?? 'Quick Mode'}
+              </a>
               <button
                 onClick={() => setWalkInOpen(true)}
                 className="flex items-center gap-1.5 border border-zinc-200 bg-white hover:bg-zinc-50 text-zinc-700 text-xs font-medium px-3 py-1.5 rounded-md transition-colors"

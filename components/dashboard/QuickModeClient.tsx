@@ -11,7 +11,7 @@ import { useLang } from '@/components/i18n/LanguageProvider'
 import { dashboardT } from '@/lib/i18n/dashboardT'
 import {
   Users, Clock, Check, X, UserCheck, AlertCircle,
-  Plus, RefreshCw, Utensils,
+  Plus, RefreshCw, Utensils, ArrowLeft,
 } from 'lucide-react'
 
 const today = new Date().toISOString().split('T')[0]
@@ -91,14 +91,22 @@ export function QuickModeClient({ restaurantId, staffName }: Props) {
           </div>
           <p className="text-xs text-zinc-400 mt-0.5">{dateLabel} · {staffName}</p>
         </div>
-        <button
-          onClick={refresh}
-          disabled={loading}
-          className="p-2 rounded-md hover:bg-zinc-100 text-zinc-400 hover:text-zinc-700 transition-colors disabled:opacity-40"
-          title="Refresh"
-        >
-          <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
-        </button>
+        <div className="flex items-center gap-2">
+          <a
+            href="/dashboard"
+            className="flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-800 border border-zinc-200 px-2.5 py-1.5 rounded-md hover:bg-zinc-50 transition-colors"
+          >
+            <ArrowLeft size={12} /> Full view
+          </a>
+          <button
+            onClick={refresh}
+            disabled={loading}
+            className="p-2 rounded-md hover:bg-zinc-100 text-zinc-400 hover:text-zinc-700 transition-colors disabled:opacity-40"
+            title="Refresh"
+          >
+            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+          </button>
+        </div>
       </div>
 
       {/* Stats bar */}

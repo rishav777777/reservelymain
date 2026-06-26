@@ -11,6 +11,7 @@ export interface GuestProfile {
   preferences:   Record<string, unknown>
   notes:         string | null
   created_at:    string
+  no_show_count?: number
 }
 
 export interface RecurringReservation {

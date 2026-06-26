@@ -65,7 +65,7 @@ export default function BillingPage() {
       {/* Plan tiers */}
       <div>
         <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-4">{tx.plans}</p>
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {tiers.map((tier) => (
             <div
               key={tier.id}
@@ -101,18 +101,27 @@ export default function BillingPage() {
                 ))}
               </ul>
 
-              <button
-                onClick={() => { handleCheckout(tier.id).catch(() => {}) }}
-                disabled={loading === tier.id}
-                className={`w-full text-xs font-medium py-2 rounded-md border transition-colors flex items-center justify-center gap-1.5 ${
-                  tier.popular
-                    ? 'bg-brand-primary text-white border-brand-primary hover:opacity-90'
-                    : 'bg-zinc-50 text-zinc-700 border-zinc-200 hover:bg-zinc-100'
-                } disabled:opacity-60 disabled:cursor-not-allowed`}
-              >
-                {loading === tier.id && <Loader2 size={11} className="animate-spin" />}
-                {tier.popular ? tx.choosePlan : tx.choosePlan}
-              </button>
+              {tier.price === 0 ? (
+                <button
+                  className="w-full text-xs font-medium py-2 rounded-md border border-zinc-200 bg-zinc-50 text-zinc-500 cursor-default"
+                  disabled
+                >
+                  Current plan
+                </button>
+              ) : (
+                <button
+                  onClick={() => { handleCheckout(tier.id).catch(() => {}) }}
+                  disabled={loading === tier.id}
+                  className={`w-full text-xs font-medium py-2 rounded-md border transition-colors flex items-center justify-center gap-1.5 ${
+                    tier.popular
+                      ? 'bg-brand-primary text-white border-brand-primary hover:opacity-90'
+                      : 'bg-zinc-50 text-zinc-700 border-zinc-200 hover:bg-zinc-100'
+                  } disabled:opacity-60 disabled:cursor-not-allowed`}
+                >
+                  {loading === tier.id && <Loader2 size={11} className="animate-spin" />}
+                  {tx.choosePlan}
+                </button>
+              )}
             </div>
           ))}
         </div>

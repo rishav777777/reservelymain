@@ -12,7 +12,12 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const stored = localStorage.getItem('reservely-lang') as Lang | null
-    if (stored === 'DE' || stored === 'EN') setLangState(stored)
+    if (stored === 'DE' || stored === 'EN') {
+      setLangState(stored)
+    } else {
+      const browserLang = navigator.language || ''
+      if (browserLang.toLowerCase().startsWith('de')) setLangState('DE')
+    }
   }, [])
 
   function setLang(l: Lang) {
