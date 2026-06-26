@@ -13,7 +13,7 @@ export async function GET(
 
   const { data: restaurant } = await admin
     .from('restaurants')
-    .select('id, name, slug, subscription_status, subscription_plan, subscribed_until, trial_ends_at, stripe_customer_id, booking_enabled, setup_completed, timezone, max_party_size, created_at, deleted_at, deleted_reason, purge_after')
+    .select('id, name, slug, email, phone, address, subscription_status, subscription_plan, subscribed_until, trial_ends_at, stripe_customer_id, booking_enabled, setup_completed, timezone, max_party_size, created_at, deleted_at, deleted_reason, purge_after')
     .eq('id', id)
     .single()
 
@@ -22,7 +22,7 @@ export async function GET(
   const [staffRes, reservRes, ownerRes, lastResRes] = await Promise.all([
     admin.from('profiles').select('id', { count: 'exact', head: true }).eq('restaurant_id', id),
     admin.from('reservations').select('id', { count: 'exact', head: true }).eq('restaurant_id', id),
-    admin.from('profiles').select('is_active').eq('restaurant_id', id).eq('role', 'owner').single(),
+    admin.from('profiles').select('is_active, full_name, email').eq('restaurant_id', id).eq('role', 'owner').single(),
     admin.from('reservations').select('reservation_date, status').eq('restaurant_id', id).order('reservation_date', { ascending: false }).limit(1).single(),
   ])
 
@@ -34,6 +34,8 @@ export async function GET(
       staff_count:         staffRes.count ?? 0,
       reservation_count:   reservRes.count ?? 0,
       owner_active:        ownerRes.data?.is_active ?? true,
+      owner_name:          ownerRes.data?.full_name ?? null,
+      owner_email:         ownerRes.data?.email ?? null,
       last_reservation:    lastResRes.data?.reservation_date ?? null,
     },
   })
