@@ -14,29 +14,54 @@ export default async function DashboardPage() {
 
   const today = new Date().toISOString().split('T')[0]
 
-  const [profileResult, reservationsResult, noticesResult, tablesResult, openingHoursResult] =
+  // Fetch profile first so all subsequent queries are scoped to this user's restaurant
+  const profileResult = await supabase
+    .from('profiles')
+    .select('*, restaurants(*)')
+    .eq('id', user.id)
+    .single()
+
+  const profile = profileResult.data
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const restaurant = (profile as any)?.restaurants as Record<string, unknown> | null
+  const ownRestaurantId = (restaurant?.id as string) ?? null
+
+  if (!ownRestaurantId) {
+    redirect('/login')
+  }
+
+  const [reservationsResult, noticesResult, tablesResult, openingHoursResult] =
     await Promise.all([
-      supabase.from('profiles').select('*, restaurants(*)').eq('id', user.id).single(),
       supabase
         .from('reservations')
         .select('*, restaurant_tables(name, capacity, category)')
+        .eq('restaurant_id', ownRestaurantId)
         .eq('reservation_date', today)
         .order('reservation_time', { ascending: true }),
-      supabase.from('notices').select('*').order('created_at', { ascending: false }).limit(10),
-      supabase.from('restaurant_tables').select('id', { count: 'exact', head: true }).eq('is_active', true),
-      supabase.from('opening_hours').select('id', { count: 'exact', head: true }).eq('is_open', true),
+      supabase
+        .from('notices')
+        .select('*')
+        .eq('restaurant_id', ownRestaurantId)
+        .order('created_at', { ascending: false })
+        .limit(10),
+      supabase
+        .from('restaurant_tables')
+        .select('id', { count: 'exact', head: true })
+        .eq('restaurant_id', ownRestaurantId)
+        .eq('is_active', true),
+      supabase
+        .from('opening_hours')
+        .select('id', { count: 'exact', head: true })
+        .eq('restaurant_id', ownRestaurantId)
+        .eq('is_open', true),
     ])
 
-  const profile = profileResult.data
   const reservations: Reservation[] = reservationsResult.data ?? []
   const notices: Notice[] = noticesResult.data ?? []
   const totalTables = tablesResult.count ?? 0
   const openingHoursCount = openingHoursResult.count ?? 0
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const restaurant = (profile as any)?.restaurants as Record<string, unknown> | null
-
-  const restaurantId    = (restaurant?.id as string) ?? ''
+  const restaurantId    = ownRestaurantId
   const restaurantSlug  = (restaurant?.slug as string) ?? ''
   const restaurantName  = (restaurant?.name as string) ?? 'Your Restaurant'
 
