@@ -10,18 +10,20 @@ import { CheckCircle2 } from 'lucide-react'
 import { useLang } from '@/components/i18n/LanguageProvider'
 import { dashboardT } from '@/lib/i18n/dashboardT'
 
-export default function RequestAccessPage() {
+export default function SignupPage() {
   const { lang } = useLang()
   const tx = dashboardT[lang].signup
 
   const [form, setForm] = useState({
-    contactName:    '',
-    restaurantName: '',
-    email:          '',
-    phone:          '',
-    city:           '',
-    venueType:      '',
-    message:        '',
+    contactName:     '',
+    restaurantName:  '',
+    email:           '',
+    phone:           '',
+    city:            '',
+    venueType:       '',
+    message:         '',
+    password:        '',
+    confirmPassword: '',
   })
   const [loading,   setLoading]   = useState(false)
   const [submitted, setSubmitted] = useState(false)
@@ -35,22 +37,33 @@ export default function RequestAccessPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
+
+    if (form.password.length < 8) {
+      setError(tx.passwordHint)
+      return
+    }
+    if (form.password !== form.confirmPassword) {
+      setError(tx.passwordMismatch)
+      return
+    }
+
     setLoading(true)
 
-    const res = await fetch('/api/demo-request', {
+    const res = await fetch('/api/auth/signup', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        contactName:    form.contactName,
+        fullName:       form.contactName,
         restaurantName: form.restaurantName,
         email:          form.email,
+        password:       form.password,
         phone:          form.phone || null,
         city:           form.city,
         venueType:      form.venueType || null,
         message:        form.message || null,
       }),
     })
-    const json = await res.json() as { ok?: boolean; error?: string }
+    const json = await res.json() as { success?: boolean; error?: string }
 
     if (!res.ok) {
       setError(json.error ?? tx.errorGeneric)
@@ -141,6 +154,19 @@ export default function RequestAccessPage() {
               placeholder={tx.messagePlaceholder}
               className="w-full text-sm border border-input rounded-md px-3 py-1.5 bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-none"
             />
+          </div>
+
+          <div className="border-t border-zinc-100 pt-3 space-y-3">
+            <div className="space-y-1">
+              <Label htmlFor="password" className="text-xs font-medium text-gray-700">{tx.password}</Label>
+              <Input id="password" type="password" placeholder="••••••••" value={form.password} onChange={set('password')} required minLength={8} className="h-8 text-sm" />
+              <p className="text-[10px] text-zinc-400">{tx.passwordHint}</p>
+            </div>
+
+            <div className="space-y-1">
+              <Label htmlFor="confirmPassword" className="text-xs font-medium text-gray-700">{tx.confirmPassword}</Label>
+              <Input id="confirmPassword" type="password" placeholder="••••••••" value={form.confirmPassword} onChange={set('confirmPassword')} required className="h-8 text-sm" />
+            </div>
           </div>
 
           {error && (

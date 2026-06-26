@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
@@ -13,6 +13,8 @@ import { dashboardT } from '@/lib/i18n/dashboardT'
 
 export default function LoginPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const reason = searchParams.get('reason')
   const { lang } = useLang()
   const tx = dashboardT[lang].login
   const [email, setEmail]           = useState('')
@@ -72,6 +74,11 @@ export default function LoginPage() {
         </CardDescription>
       </CardHeader>
       <CardContent>
+        {reason === 'suspended' && (
+          <div className="mb-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2.5">
+            <p className="text-xs text-amber-800 leading-relaxed">{tx.pendingNotice}</p>
+          </div>
+        )}
         <form onSubmit={handleSignIn} className="space-y-3">
           <div className="space-y-1">
             <Label htmlFor="email" className="text-xs font-medium text-gray-700">{tx.email}</Label>
