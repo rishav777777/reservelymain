@@ -235,40 +235,122 @@ export default function ReservationsPage() {
                 <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 14, color: '#aabcaf', marginTop: 6 }}>{tx.noEntries}</p>
               </div>
             ) : (
-              <div className="flex flex-col gap-4">
-                {/* Active: pending → confirmed → arrived */}
-                {activeRes.map(r => (
-                  <DayFeedCard
-                    key={r.id}
-                    reservation={r}
-                    onConfirm={handleConfirm}
-                    onDecline={handleDecline}
-                    onArrived={handleArrived}
-                    onNoShow={handleNoShow}
-                  />
-                ))}
+              <>
+                <div className="flex flex-col gap-4">
+                  {/* Active: pending → confirmed → arrived */}
+                  {activeRes.map(r => (
+                    <DayFeedCard
+                      key={r.id}
+                      reservation={r}
+                      onConfirm={handleConfirm}
+                      onDecline={handleDecline}
+                      onArrived={handleArrived}
+                      onNoShow={handleNoShow}
+                    />
+                  ))}
 
-                {/* Divider */}
-                {doneRes.length > 0 && (
-                  <div className="flex items-center gap-3 py-1">
-                    <div style={{ flex: 1, height: 1, background: 'rgba(28,35,31,0.1)' }}/>
-                    <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 10, fontWeight: 600, color: '#8fa393', letterSpacing: '0.14em', textTransform: 'uppercase' }}>{tx.alreadyHandled}</span>
-                    <div style={{ flex: 1, height: 1, background: 'rgba(28,35,31,0.1)' }}/>
+                  {/* Divider */}
+                  {doneRes.length > 0 && (
+                    <div className="flex items-center gap-3 py-1">
+                      <div style={{ flex: 1, height: 1, background: 'rgba(28,35,31,0.1)' }}/>
+                      <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 10, fontWeight: 600, color: '#8fa393', letterSpacing: '0.14em', textTransform: 'uppercase' }}>{tx.alreadyHandled}</span>
+                      <div style={{ flex: 1, height: 1, background: 'rgba(28,35,31,0.1)' }}/>
+                    </div>
+                  )}
+
+                  {/* Done: declined, no_show, completed, cancelled */}
+                  {doneRes.map(r => (
+                    <DayFeedCard
+                      key={r.id}
+                      reservation={r}
+                      onConfirm={handleConfirm}
+                      onDecline={handleDecline}
+                      onArrived={handleArrived}
+                      onNoShow={handleNoShow}
+                    />
+                  ))}
+                </div>
+
+                {/* ── Timeline ─────────────────────────────────────────── */}
+                <div style={{ marginTop: 32, paddingTop: 24, borderTop: '1px solid rgba(28,35,31,0.10)' }}>
+                  <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 10, fontWeight: 600, color: '#8fa393', letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: 18 }}>
+                    {lang === 'EN' ? 'Timeline' : 'Zeitplan'}
+                  </p>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                    {Object.entries(
+                      [...dayReservations]
+                        .sort((a, b) => a.von.localeCompare(b.von))
+                        .reduce((acc, r) => {
+                          const hour = r.von.slice(0, 2) + ':00'
+                          if (!acc[hour]) acc[hour] = []
+                          acc[hour].push(r)
+                          return acc
+                        }, {} as Record<string, Reservation[]>)
+                    )
+                      .sort(([a], [b]) => a.localeCompare(b))
+                      .map(([hour, items], groupIdx, arr) => {
+                        const isLast = groupIdx === arr.length - 1
+                        return (
+                          <div key={hour} style={{ display: 'flex', gap: 0, alignItems: 'stretch' }}>
+
+                            {/* Time label column */}
+                            <div style={{ width: 48, flexShrink: 0, paddingTop: 10 }}>
+                              <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 11, fontWeight: 700, color: '#8fa393' }}>
+                                {hour}
+                              </span>
+                            </div>
+
+                            {/* Spine column */}
+                            <div style={{ width: 24, flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                              <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#0D472B', marginTop: 12, flexShrink: 0, boxShadow: '0 0 0 3px rgba(13,71,43,0.12)' }}/>
+                              {!isLast && <div style={{ width: 1.5, flex: 1, background: 'rgba(13,71,43,0.15)', marginTop: 4 }}/>}
+                            </div>
+
+                            {/* Reservation bars */}
+                            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6, padding: '6px 0 20px 8px' }}>
+                              {items.map(r => {
+                                const accentColor =
+                                  r.status === 'arrived'   ? '#0D472B' :
+                                  r.status === 'confirmed' ? '#1B7A43' :
+                                  r.status === 'pending'   ? '#B45309' :
+                                                             '#94a3b8'
+                                const bgColor =
+                                  r.status === 'arrived'   ? 'rgba(13,71,43,0.07)'  :
+                                  r.status === 'confirmed' ? 'rgba(27,122,67,0.07)' :
+                                  r.status === 'pending'   ? 'rgba(180,87,9,0.07)'  :
+                                                             'rgba(28,35,31,0.04)'
+                                return (
+                                  <div key={r.id} style={{
+                                    display: 'flex', alignItems: 'center', gap: 10,
+                                    background: bgColor,
+                                    border: `1px solid ${accentColor}22`,
+                                    borderLeft: `3px solid ${accentColor}`,
+                                    borderRadius: '10px',
+                                    padding: '9px 14px',
+                                  }}>
+                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                      <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 600, color: '#1C231F', display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                        {r.name}
+                                      </span>
+                                    </div>
+                                    <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12, color: '#8fa393', flexShrink: 0 }}>
+                                      {r.guests} {lang === 'EN' ? 'guests' : 'Pers.'}
+                                    </span>
+                                    <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 11, color: '#c0cfc3', flexShrink: 0, minWidth: 36, textAlign: 'right' }}>
+                                      {r.von}
+                                    </span>
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          </div>
+                        )
+                      })
+                    }
                   </div>
-                )}
-
-                {/* Done: declined, no_show, completed, cancelled */}
-                {doneRes.map(r => (
-                  <DayFeedCard
-                    key={r.id}
-                    reservation={r}
-                    onConfirm={handleConfirm}
-                    onDecline={handleDecline}
-                    onArrived={handleArrived}
-                    onNoShow={handleNoShow}
-                  />
-                ))}
-              </div>
+                </div>
+              </>
             )}
           </div>
         </div>

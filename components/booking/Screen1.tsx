@@ -307,7 +307,7 @@ export function Screen1({
               {lang === "DE" ? "Personenanzahl" : "Party size"}
             </p>
           </div>
-          <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
             {Array.from({ length: Math.min(8, maxPartySize ?? 8) }, (_, i) => i + 1).map(n => {
               const active = partySize === n;
               return (
@@ -325,25 +325,40 @@ export function Screen1({
                 </button>
               );
             })}
+
+            {/* 9+ guests: show a chip that expands into an inline stepper — no browser prompt */}
             {(!maxPartySize || maxPartySize > 8) && (
-              <button
-                onClick={() => {
-                  const val = parseInt(
-                    prompt(lang === "DE" ? "Wie viele Personen?" : "How many guests?") ?? "", 10
-                  );
-                  if (!isNaN(val) && val > 0 && (!maxPartySize || val <= maxPartySize))
-                    onPartySizeChange(val);
-                }}
-                style={{
-                  width: "44px", height: "44px", borderRadius: "12px",
-                  background: partySize > 8 ? "linear-gradient(135deg, #34D399 0%, #059669 100%)" : "rgba(255,255,255,0.07)",
-                  border: partySize > 8 ? "1px solid rgba(52,211,153,0.60)" : "1px solid rgba(255,255,255,0.10)",
-                  color: partySize > 8 ? "#022c22" : "rgba(255,255,255,0.35)",
-                  fontFamily: "'DM Sans', sans-serif", fontSize: "12px",
-                  cursor: "pointer", transition: "all .12s ease",
-                }}>
-                {partySize > 8 ? partySize : "+"}
-              </button>
+              partySize > 8 ? (
+                <div style={{ display: "flex", alignItems: "center", gap: "6px", background: "linear-gradient(135deg, #34D399 0%, #059669 100%)", borderRadius: "14px", padding: "6px 10px", border: "1px solid rgba(52,211,153,0.60)", boxShadow: "0 0 14px rgba(52,211,153,0.30)" }}>
+                  <button
+                    onClick={() => onPartySizeChange(partySize - 1)}
+                    style={{ width: "28px", height: "28px", borderRadius: "8px", background: "rgba(2,44,34,0.18)", border: "none", color: "#022c22", fontSize: "18px", fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1, flexShrink: 0 }}>
+                    −
+                  </button>
+                  <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "15px", fontWeight: 700, color: "#022c22", minWidth: "30px", textAlign: "center" }}>
+                    {partySize}
+                  </span>
+                  <button
+                    onClick={() => { if (!maxPartySize || partySize < maxPartySize) onPartySizeChange(partySize + 1); }}
+                    disabled={!!maxPartySize && partySize >= maxPartySize}
+                    style={{ width: "28px", height: "28px", borderRadius: "8px", background: "rgba(2,44,34,0.18)", border: "none", color: "#022c22", fontSize: "18px", fontWeight: 700, cursor: (!maxPartySize || partySize < maxPartySize) ? "pointer" : "not-allowed", display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1, flexShrink: 0, opacity: (!!maxPartySize && partySize >= maxPartySize) ? 0.35 : 1 }}>
+                    +
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => onPartySizeChange(9)}
+                  style={{
+                    height: "44px", padding: "0 16px", borderRadius: "12px",
+                    background: "rgba(255,255,255,0.07)",
+                    border: "1px solid rgba(255,255,255,0.10)",
+                    color: "rgba(255,255,255,0.45)",
+                    fontFamily: "'DM Sans', sans-serif", fontSize: "13px", fontWeight: 600,
+                    cursor: "pointer", transition: "all .12s ease",
+                  }}>
+                  {lang === "DE" ? "9+ Pers." : "9+ guests"}
+                </button>
+              )
             )}
           </div>
         </div>
