@@ -20,6 +20,7 @@ export const dashboardT = {
         myTeam:      'My team',
         plan:        'Plan',
         settings:    'Settings',
+        waitlist:    'Waitlist',
       },
     },
     footer: {
@@ -532,7 +533,7 @@ export const dashboardT = {
       },
       tables: {
         desc:          "Set up your restaurant's floor layout and tables. Reservely uses this to match guests to the right table automatically.",
-        floorPlan:     'Floor plan editor',
+        floorPlan:     'Table layout editor',
         floorPlanDesc: 'Drag and place tables exactly as they are in your restaurant',
         tableList:     'Table list',
         tableListDesc: 'Edit table names, how many seats each has, and which area they belong to',
@@ -680,6 +681,7 @@ export const dashboardT = {
         myTeam:      'Mein Team',
         plan:        'Tarif',
         settings:    'Einstellungen',
+        waitlist:    'Warteliste',
       },
     },
     footer: {
@@ -1192,7 +1194,7 @@ export const dashboardT = {
       },
       tables: {
         desc:          'Richten Sie den Grundriss und die Tische Ihres Restaurants ein. Reservely weist Gäste automatisch dem richtigen Tisch zu.',
-        floorPlan:     'Tischplan-Editor',
+        floorPlan:     'Tischlayout-Editor',
         floorPlanDesc: 'Platzieren Sie Tische genau so, wie sie in Ihrem Restaurant stehen',
         tableList:     'Tischliste',
         tableListDesc: 'Tischnamen, Platzanzahl und Bereich bearbeiten',

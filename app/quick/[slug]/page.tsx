@@ -16,7 +16,7 @@ export default async function QuickBookPage({ params }: Props) {
 
   const { data: restaurant } = await admin
     .from('restaurants')
-    .select('id, name, booking_enabled, advance_booking_days, max_party_size, default_duration_mins')
+    .select('id, name, booking_enabled, advance_booking_days, max_party_size, default_duration_minutes')
     .eq('slug', slug)
     .single()
 
@@ -64,7 +64,7 @@ export default async function QuickBookPage({ params }: Props) {
       restaurantName={restaurant.name}
       advanceBookingDays={restaurant.advance_booking_days ?? 90}
       maxPartySize={restaurant.max_party_size ?? 20}
-      defaultDuration={restaurant.default_duration_mins ?? 90}
+      defaultDuration={restaurant.default_duration_minutes ?? 90}
       openingHoursMap={openingHoursMap}
       closedDows={closedDows}
     />
