@@ -50,9 +50,11 @@ export async function GET(request: NextRequest) {
   }
 
   // ── 2-hour reminders ───────────────────────────────────────────────────────
-  // Target: reservations starting in the next 2–2.5 hours, status confirmed, not yet sent
-  const windowStart = new Date(now.getTime() + 2 * 60 * 60 * 1000)
-  const windowEnd   = new Date(now.getTime() + 2.5 * 60 * 60 * 1000)
+  // Crons run hourly. Window = [now+1.75h, now+2.75h] (60-min span) so every
+  // reservation is covered by exactly one cron run. reminder_2h_sent prevents
+  // duplicates if two runs overlap on the same reservation.
+  const windowStart = new Date(now.getTime() + 1.75 * 60 * 60 * 1000)
+  const windowEnd   = new Date(now.getTime() + 2.75 * 60 * 60 * 1000)
 
   const todayStr = now.toISOString().slice(0, 10)
   const windowStartTime = windowStart.toTimeString().slice(0, 5) // HH:MM

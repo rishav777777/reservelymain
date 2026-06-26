@@ -452,45 +452,54 @@ export function SettingsClient({ restaurant, isOwner = false }: Props) {
               title={tx.booking.waTitle}
               description={tx.booking.waDesc}
             >
-              <FieldRow
-                label={tx.booking.waNumber}
-                hint={tx.booking.waHint}
-              >
-                <div className="relative max-w-xs">
-                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
-                  <Input
-                    type="tel"
-                    placeholder="+49 151 12345678"
-                    value={whatsapp.owner_whatsapp}
-                    onChange={e => setWhatsapp(p => ({ ...p, owner_whatsapp: e.target.value }))}
-                    className="h-10 pl-9"
-                  />
+              {/* Coming-soon notice — remove once Meta Business Account is approved */}
+              <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-4 flex gap-3 items-start">
+                <span className="text-amber-500 mt-0.5 shrink-0">⏳</span>
+                <div>
+                  <p className="text-sm font-semibold text-amber-800">
+                    {lang === 'DE' ? 'WhatsApp — kommt bald' : 'WhatsApp — coming soon'}
+                  </p>
+                  <p className="text-xs text-amber-700 mt-1 leading-relaxed">
+                    {lang === 'DE'
+                      ? 'Die WhatsApp-Integration wartet auf die Genehmigung des Meta Business Accounts (3–7 Werktage). Sobald die Genehmigung vorliegt, wird diese Funktion hier freigeschaltet.'
+                      : 'WhatsApp integration is pending Meta Business Account approval (3–7 business days). Once approved, this feature will be enabled here automatically.'}
+                  </p>
                 </div>
-              </FieldRow>
+              </div>
 
-              <div className="border-t border-zinc-100" />
+              <div className="opacity-40 pointer-events-none select-none">
+                <FieldRow
+                  label={tx.booking.waNumber}
+                  hint={tx.booking.waHint}
+                >
+                  <div className="relative max-w-xs">
+                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+                    <Input
+                      type="tel"
+                      placeholder="+49 151 12345678"
+                      value={whatsapp.owner_whatsapp}
+                      onChange={e => setWhatsapp(p => ({ ...p, owner_whatsapp: e.target.value }))}
+                      className="h-10 pl-9"
+                    />
+                  </div>
+                </FieldRow>
 
-              <ToggleRow
-                label={tx.booking.instantTitle}
-                description={tx.booking.instantDesc}
-                checked={whatsapp.wa_notifications}
-                onChange={v => setWhatsapp(p => ({ ...p, wa_notifications: v }))}
-              />
+                <div className="border-t border-zinc-100" />
 
-              <ToggleRow
-                label={tx.booking.morningTitle}
-                description={tx.booking.morningDesc}
-                checked={whatsapp.wa_daily_summary}
-                onChange={v => setWhatsapp(p => ({ ...p, wa_daily_summary: v }))}
-              />
+                <ToggleRow
+                  label={tx.booking.instantTitle}
+                  description={tx.booking.instantDesc}
+                  checked={whatsapp.wa_notifications}
+                  onChange={v => setWhatsapp(p => ({ ...p, wa_notifications: v }))}
+                />
 
-              <Button
-                onClick={() => save(whatsapp)}
-                disabled={saving}
-                className="bg-[#E63946] hover:bg-[#c1121f] text-white"
-              >
-                {saving ? tx.saving : tx.booking.saveWa}
-              </Button>
+                <ToggleRow
+                  label={tx.booking.morningTitle}
+                  description={tx.booking.morningDesc}
+                  checked={whatsapp.wa_daily_summary}
+                  onChange={v => setWhatsapp(p => ({ ...p, wa_daily_summary: v }))}
+                />
+              </div>
             </SectionCard>
           </>
         )}
