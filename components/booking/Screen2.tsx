@@ -3,29 +3,21 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { type Lang, t } from './translations'
 
-// ─── Zone layout ─────────────────────────────────────────────────────────────
-// Kept for fallback visual rendering lines if layout data lacks bounding boxes
-const ZONES: Record<string, { x: number; y: number; w: number; h: number; label: string }> = {
-  INDOOR:  { x: 8,   y: 8,   w: 220, h: 148, label: 'Indoor'  },
-  BAR:     { x: 240, y: 8,   w: 104, h: 148, label: 'Bar'     },
-  OUTDOOR: { x: 8,   y: 168, w: 104, h: 104, label: 'Outdoor' },
-  VIP:     { x: 124, y: 168, w: 220, h: 104, label: 'VIP'     },
-}
-
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface LiveTable {
-  id: string
-  name: string
-  capacity: number
-  category: string
-  status: 'free' | 'held' | 'reserved'
+  id:            string
+  name:          string
+  capacity:      number
+  category:      string
+  status:        'free' | 'held' | 'reserved'
   heldBySession: string | null
-  // Support coordinate parameters mapped from your new interactive layout workspace
-  x_position?: number
-  y_position?: number
 }
 
-type PlacedTable = LiveTable & { x: number; y: number; w: number; h: number }
+interface ZoneInfo {
+  label:      string
+  is_open:    boolean
+  sort_order: number
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function getOrCreateSessionId(): string {
@@ -41,38 +33,45 @@ function parseTimeFrom(timeStr: string): string {
 }
 
 const GLASS: React.CSSProperties = {
-  background: 'rgba(255,255,255,0.06)',
-  backdropFilter: 'blur(40px) saturate(160%)',
-  WebkitBackdropFilter: 'blur(40px) saturate(160%)',
-  border: '1px solid rgba(255,255,255,0.11)',
-  borderRadius: '22px',
+  background:          'rgba(255,255,255,0.06)',
+  backdropFilter:      'blur(40px) saturate(160%)',
+  WebkitBackdropFilter:'blur(40px) saturate(160%)',
+  border:              '1px solid rgba(255,255,255,0.11)',
+  borderRadius:        '22px',
 }
 
-// ─── Demo mock tables ─────────────────────────────────────────────────────────
-const DEMO_TABLES: PlacedTable[] = [
-  { id:'demo-t1', name:'T1', capacity:2, category:'INDOOR',  status:'free',     heldBySession:null,    x:18,  y:25,  w:58, h:44 },
-  { id:'demo-t2', name:'T2', capacity:4, category:'INDOOR',  status:'free',     heldBySession:null,    x:88,  y:25,  w:58, h:44 },
-  { id:'demo-t3', name:'T3', capacity:6, category:'INDOOR',  status:'free',     heldBySession:null,    x:158, y:25,  w:58, h:44 },
-  { id:'demo-t4', name:'T4', capacity:2, category:'INDOOR',  status:'reserved', heldBySession:null,    x:18,  y:90,  w:58, h:44 },
-  { id:'demo-t5', name:'T5', capacity:4, category:'INDOOR',  status:'free',     heldBySession:null,    x:88,  y:90,  w:58, h:44 },
-  { id:'demo-t6', name:'T6', capacity:2, category:'BAR',     status:'held',     heldBySession:'other', x:252, y:25,  w:58, h:44 },
-  { id:'demo-t7', name:'T7', capacity:4, category:'BAR',     status:'free',     heldBySession:null,    x:252, y:95,  w:58, h:44 },
-  { id:'demo-t8', name:'T8', capacity:2, category:'OUTDOOR', status:'free',     heldBySession:null,    x:18,  y:180, w:58, h:44 },
-  { id:'demo-t9', name:'T9', capacity:8, category:'VIP',     status:'free',     heldBySession:null,    x:136, y:180, w:58, h:44 },
-  { id:'demo-t10',name:'T10',capacity:4, category:'VIP',     status:'reserved', heldBySession:null,    x:210, y:180, w:58, h:44 },
+// ─── Demo data ────────────────────────────────────────────────────────────────
+const DEMO_ZONES: ZoneInfo[] = [
+  { label: 'Indoor',  is_open: true, sort_order: 0 },
+  { label: 'Bar',     is_open: true, sort_order: 1 },
+  { label: 'Outdoor', is_open: true, sort_order: 2 },
+  { label: 'VIP',     is_open: true, sort_order: 3 },
+]
+
+const DEMO_TABLES: LiveTable[] = [
+  { id:'demo-t1',  name:'T1',  capacity:2, category:'INDOOR',  status:'free',     heldBySession:null    },
+  { id:'demo-t2',  name:'T2',  capacity:4, category:'INDOOR',  status:'free',     heldBySession:null    },
+  { id:'demo-t3',  name:'T3',  capacity:6, category:'INDOOR',  status:'free',     heldBySession:null    },
+  { id:'demo-t4',  name:'T4',  capacity:2, category:'INDOOR',  status:'reserved', heldBySession:null    },
+  { id:'demo-t5',  name:'T5',  capacity:4, category:'INDOOR',  status:'free',     heldBySession:null    },
+  { id:'demo-t6',  name:'T6',  capacity:2, category:'BAR',     status:'held',     heldBySession:'other' },
+  { id:'demo-t7',  name:'T7',  capacity:4, category:'BAR',     status:'free',     heldBySession:null    },
+  { id:'demo-t8',  name:'T8',  capacity:2, category:'OUTDOOR', status:'free',     heldBySession:null    },
+  { id:'demo-t9',  name:'T9',  capacity:8, category:'VIP',     status:'free',     heldBySession:null    },
+  { id:'demo-t10', name:'T10', capacity:4, category:'VIP',     status:'reserved', heldBySession:null    },
 ]
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 interface Props {
-  lang: Lang
-  dateStr: string
-  rawDate: string
-  timeStr: string
+  lang:         Lang
+  dateStr:      string
+  rawDate:      string
+  timeStr:      string
   restaurantId: string
-  partySize: number
-  demoMode?: boolean
-  onBack: () => void
-  onNext: (tableId: string, tableName: string) => void
+  partySize:    number
+  demoMode?:    boolean
+  onBack:       () => void
+  onNext:       (tableId: string, tableName: string) => void
 }
 
 const HOLD_RENEW_MS = 90_000
@@ -84,93 +83,85 @@ export function Screen2({ lang, dateStr, rawDate, timeStr, restaurantId, partySi
   const sessionId = useRef(getOrCreateSessionId())
   const time      = parseTimeFrom(timeStr)
 
-  const [tables,    setTables]    = useState<PlacedTable[]>([])
-  const [zones,     setZones]     = useState<typeof ZONES>(ZONES)
-  const [loading,   setLoading]   = useState(true)
-  const [error,     setError]     = useState<string | null>(null)
-  const [selId,     setSelId]     = useState<string | null>(null)
-  const [holding,   setHolding]   = useState(false)
-  const [holdErr,   setHoldErr]   = useState<string | null>(null)
-  const [countdown, setCountdown] = useState(HOLD_SECS)
-  const [heldUntil, setHeldUntil] = useState<Date | null>(null)
+  const [tables,     setTables]     = useState<LiveTable[]>([])
+  const [zones,      setZones]      = useState<ZoneInfo[]>([])
+  const [activeZone, setActiveZone] = useState<string>('')
+  const [loading,    setLoading]    = useState(true)
+  const [error,      setError]      = useState<string | null>(null)
+  const [selId,      setSelId]      = useState<string | null>(null)
+  const [holding,    setHolding]    = useState(false)
+  const [holdErr,    setHoldErr]    = useState<string | null>(null)
+  const [countdown,  setCountdown]  = useState(HOLD_SECS)
+  const [heldUntil,  setHeldUntil]  = useState<Date | null>(null)
 
   const renewRef  = useRef<ReturnType<typeof setInterval> | null>(null)
   const pollRef   = useRef<ReturnType<typeof setInterval> | null>(null)
   const countRef  = useRef<ReturnType<typeof setInterval> | null>(null)
   const prevSelId = useRef<string | null>(null)
 
-  // ── Fetch custom positions from layout workspace ──────────────────────────
+  // ── Data fetching ───────────────────────────────────────────────────────────
   const fetchTables = useCallback(async () => {
     if (demoMode) {
+      setZones(DEMO_ZONES)
       setTables(DEMO_TABLES)
-      setZones(ZONES)
+      setActiveZone(prev => prev || 'INDOOR')
       setLoading(false)
       return
     }
+
     try {
-      // 1. Fetch live availabilities
-      const resAvailability = await fetch(
+      // 1. Live table availability
+      const resAvail = await fetch(
         `/api/reservations/tables?date=${rawDate}&time=${time}&duration=90&restaurantId=${restaurantId}`
       )
-      if (!resAvailability.ok) throw new Error('Failed to load table metrics')
-      const availabilityJson: { tables: LiveTable[] } = await resAvailability.json()
+      if (!resAvail.ok) throw new Error('Failed to load table data')
+      const { tables: liveTables } = await resAvail.json() as {
+        tables: Array<{ id: string; name: string; capacity: number; category: string; status: 'free'|'held'|'reserved'; heldBySession: string|null }>
+      }
 
-      // 2. Fetch zones + table positions from layout
+      // 2. Zone list + is_open from layout API
+      let fetchedZones: ZoneInfo[] = []
+      const closedKeys = new Set<string>()
+
       const resLayout = await fetch(`/api/layout?restaurantId=${restaurantId}`)
-      let layoutPositions: Record<string, { x: number; y: number }> = {}
-      let apiZones: typeof ZONES = {}
-
       if (resLayout.ok) {
         const layoutJson = await resLayout.json()
-
-        if (Array.isArray(layoutJson.tables)) {
-          layoutJson.tables.forEach((item: any) => {
-            if (item.id) layoutPositions[item.id] = { x: item.x, y: item.y }
-          })
-        }
-
         if (Array.isArray(layoutJson.zones) && layoutJson.zones.length > 0) {
-          apiZones = {}
-          layoutJson.zones.forEach((z: any) => {
-            apiZones[z.label.toUpperCase()] = {
-              x: z.x, y: z.y, w: z.w, h: z.h, label: z.label
-            }
-          })
+          fetchedZones = (layoutJson.zones as Array<{ label: string; is_open: boolean; sort_order?: number }>)
+            .map(z => ({ label: z.label, is_open: z.is_open !== false, sort_order: z.sort_order ?? 0 }))
+            .sort((a, b) => a.sort_order - b.sort_order)
+
+          fetchedZones
+            .filter(z => !z.is_open)
+            .forEach(z => closedKeys.add(z.label.toUpperCase()))
         }
       }
 
-      setZones(Object.keys(apiZones).length > 0 ? apiZones : ZONES)
+      // 3. Correct session-own holds + strip closed-zone tables
+      const processed: LiveTable[] = liveTables
+        .map(tb => ({
+          ...tb,
+          status: (tb.status === 'held' && tb.heldBySession === sessionId.current
+            ? 'free' as const : tb.status),
+        }))
+        .filter(tb => !closedKeys.has(tb.category.toUpperCase()))
 
-      // 3. Merge live statuses with custom positions from your new workspace workspace
-      const placed: PlacedTable[] = availabilityJson.tables.map((live) => {
-        const effectiveStatus =
-          live.status === 'held' && live.heldBySession === sessionId.current
-            ? 'free' : live.status
+      // 4. If layout has no zones, derive from table categories
+      const openZones = fetchedZones.filter(z => z.is_open)
+      if (openZones.length === 0) {
+        const seen = new Set<string>()
+        processed.forEach(tb => seen.add(tb.category))
+        fetchedZones = [...seen].map((c, i) => ({ label: c, is_open: true, sort_order: i }))
+      }
 
-        // Match custom coordinates saved from the custom designer workspace workspace
-        const savedPos = layoutPositions[live.id] || { 
-          x: live.x_position, 
-          y: live.y_position 
-        }
-
-        // Fallback strategy if table coordinates haven't been configured via workspace drag-and-drop yet
-        const fallbackZone = ZONES[live.category.toUpperCase()] || ZONES.INDOOR
-        const x = savedPos.x !== undefined ? savedPos.x : (fallbackZone.x + 20)
-        const y = savedPos.y !== undefined ? savedPos.y : (fallbackZone.y + 30)
-
-        return {
-          ...live,
-          x,
-          y,
-          w: 58, // Standard layout box width
-          h: 44, // Standard layout box height
-          status: effectiveStatus,
-        }
-      })
-
-      setTables(placed)
+      const visibleZones = fetchedZones.filter(z => z.is_open)
+      setZones(visibleZones)
+      setTables(processed)
       setError(null)
-    } catch (e: unknown) {
+
+      // Only set active zone on first load — keep user's tab selection on polls
+      setActiveZone(prev => prev || visibleZones[0]?.label.toUpperCase() || '')
+    } catch (e) {
       setError(e instanceof Error ? e.message : 'Unknown error')
     } finally {
       setLoading(false)
@@ -179,9 +170,7 @@ export function Screen2({ lang, dateStr, rawDate, timeStr, restaurantId, partySi
 
   useEffect(() => {
     fetchTables()
-    if (!demoMode) {
-      pollRef.current = setInterval(fetchTables, POLL_MS)
-    }
+    if (!demoMode) pollRef.current = setInterval(fetchTables, POLL_MS)
     return () => { if (pollRef.current) clearInterval(pollRef.current) }
   }, [fetchTables, demoMode])
 
@@ -225,8 +214,7 @@ export function Screen2({ lang, dateStr, rawDate, timeStr, restaurantId, partySi
     return true
   }, [rawDate, time, restaurantId, demoMode])
 
-  // ── Table click ─────────────────────────────────────────────────────────────
-  const handleSelect = async (table: PlacedTable) => {
+  const handleSelect = async (table: LiveTable) => {
     if (table.status !== 'free' || holding || table.capacity < partySize) return
     setHolding(true)
     setHoldErr(null)
@@ -286,186 +274,247 @@ export function Screen2({ lang, dateStr, rawDate, timeStr, restaurantId, partySi
     onNext(selTable.id, selTable.name)
   }
 
+  const tablesInZone = (zoneLabel: string) =>
+    tables.filter(tb => tb.category.toUpperCase() === zoneLabel.toUpperCase())
+
+  const visibleTables = tablesInZone(activeZone)
+
   // ─── Render ────────────────────────────────────────────────────────────────
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
       <style>{`
-        @keyframes tablePulse { 0%,100%{opacity:1} 50%{opacity:.5} }
-        @keyframes holdGlow   { 0%,100%{box-shadow:0 0 0 0 rgba(13,71,43,0.4)} 50%{box-shadow:0 0 0 6px rgba(13,71,43,0)} }
-        @keyframes spin       { to{transform:rotate(360deg)} }
-        .tbl-pulse { animation: tablePulse 1.9s ease-in-out infinite }
+        @keyframes holdGlow  { 0%,100%{box-shadow:0 0 0 0 rgba(13,71,43,0.4)} 50%{box-shadow:0 0 0 6px rgba(13,71,43,0)} }
+        @keyframes selPulse  { 0%,100%{box-shadow:0 0 0 0 rgba(52,211,153,0.3)} 50%{box-shadow:0 0 0 8px rgba(52,211,153,0)} }
+        @keyframes spin      { to{transform:rotate(360deg)} }
+        .tbl-selected        { animation: selPulse 2s ease-in-out infinite }
+        .zone-scroller::-webkit-scrollbar { display:none }
       `}</style>
 
-      {/* Summary pill */}
-      <div style={{ ...GLASS, borderRadius: '100px', padding: '11px 18px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-        <div style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#34D399', boxShadow: '0 0 8px rgba(52,211,153,0.5)', flexShrink: 0 }}/>
-        <span style={{ fontFamily: "'DM Sans',sans-serif", fontSize: '13px', color: 'rgba(255,255,255,0.75)', fontWeight: 400, flex: 1 }}>
-          <strong style={{ color: '#fff' }}>{dateStr}</strong> · {timeStr}
+      {/* ── Summary pill ─────────────────────────────────────────────────────── */}
+      <div style={{ ...GLASS, borderRadius:'100px', padding:'11px 18px', display:'flex', alignItems:'center', gap:'10px' }}>
+        <div style={{ width:'7px', height:'7px', borderRadius:'50%', background:'#34D399', boxShadow:'0 0 8px rgba(52,211,153,0.5)', flexShrink:0 }}/>
+        <span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:'13px', color:'rgba(255,255,255,0.75)', fontWeight:400, flex:1 }}>
+          <strong style={{ color:'#fff' }}>{dateStr}</strong> · {timeStr}
         </span>
-        <span style={{ fontFamily: "'DM Sans',sans-serif", fontSize: '11px', color: '#34D399', fontWeight: 700, background: 'rgba(52,211,153,0.10)', border: '1px solid rgba(52,211,153,0.20)', borderRadius: '100px', padding: '3px 10px', flexShrink: 0 }}>
+        <span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:'11px', color:'#34D399', fontWeight:700, background:'rgba(52,211,153,0.10)', border:'1px solid rgba(52,211,153,0.20)', borderRadius:'100px', padding:'3px 10px', flexShrink:0 }}>
           {partySize} {partySize === 1 ? (lang === 'DE' ? 'Person' : 'guest') : (lang === 'DE' ? 'Personen' : 'guests')}
         </span>
       </div>
 
-      {/* Hold timer */}
+      {/* ── Hold timer ───────────────────────────────────────────────────────── */}
       {selId && heldUntil && (
-        <div style={{ background: countdown < 60 ? 'rgba(239,68,68,0.10)' : 'rgba(52,211,153,0.07)', border: `1px solid ${countdown < 60 ? 'rgba(239,68,68,0.25)' : 'rgba(52,211,153,0.20)'}`, borderRadius: '14px', padding: '10px 16px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <div style={{ width: '7px', height: '7px', borderRadius: '50%', background: countdown < 60 ? '#f87171' : '#34D399', animation: 'holdGlow 1.5s ease-in-out infinite', flexShrink: 0 }}/>
-          <span style={{ fontFamily: "'DM Sans',sans-serif", fontSize: '12px', color: countdown < 60 ? '#fca5a5' : 'rgba(255,255,255,0.65)', flex: 1 }}>
-            {lang === 'DE' ? 'Tisch gehalten für' : 'Table held for'} <strong style={{ color: countdown < 60 ? '#fca5a5' : '#34D399' }}>{fmtCountdown(countdown)}</strong>
+        <div style={{ background: countdown < 60 ? 'rgba(239,68,68,0.10)' : 'rgba(52,211,153,0.07)', border:`1px solid ${countdown < 60 ? 'rgba(239,68,68,0.25)' : 'rgba(52,211,153,0.20)'}`, borderRadius:'14px', padding:'10px 16px', display:'flex', alignItems:'center', gap:'10px' }}>
+          <div style={{ width:'7px', height:'7px', borderRadius:'50%', background: countdown < 60 ? '#f87171' : '#34D399', animation:'holdGlow 1.5s ease-in-out infinite', flexShrink:0 }}/>
+          <span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:'12px', color: countdown < 60 ? '#fca5a5' : 'rgba(255,255,255,0.65)', flex:1 }}>
+            {lang === 'DE' ? 'Tisch gehalten für' : 'Table held for'}{' '}
+            <strong style={{ color: countdown < 60 ? '#fca5a5' : '#34D399' }}>{fmtCountdown(countdown)}</strong>
             {lang === 'DE' ? ' — bitte Details ausfüllen' : ' — please fill in your details'}
           </span>
         </div>
       )}
 
-      {/* Error */}
+      {/* ── Hold error ───────────────────────────────────────────────────────── */}
       {holdErr && (
-        <div style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.22)', borderRadius: '14px', padding: '10px 16px' }}>
-          <span style={{ fontFamily: "'DM Sans',sans-serif", fontSize: '12px', color: '#fca5a5' }}>{holdErr}</span>
+        <div style={{ background:'rgba(239,68,68,0.08)', border:'1px solid rgba(239,68,68,0.22)', borderRadius:'14px', padding:'10px 16px' }}>
+          <span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:'12px', color:'#fca5a5' }}>{holdErr}</span>
         </div>
       )}
 
-      {/* Legend */}
-      <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+      {/* ── Zone tab bar (only when >1 section) ─────────────────────────────── */}
+      {!loading && !error && zones.length > 1 && (
+        <div className="zone-scroller" style={{ display:'flex', gap:'8px', overflowX:'auto', paddingBottom:'2px', scrollbarWidth:'none' }}>
+          {zones.map(zone => {
+            const key        = zone.label.toUpperCase()
+            const freeCount  = tablesInZone(key).filter(tb => tb.status === 'free' && tb.capacity >= partySize).length
+            const isActive   = activeZone === key
+            return (
+              <button key={key} onClick={() => setActiveZone(key)}
+                style={{
+                  flexShrink:          0,
+                  padding:             '9px 16px',
+                  borderRadius:        '100px',
+                  background:          isActive ? 'rgba(52,211,153,0.12)' : 'rgba(255,255,255,0.06)',
+                  border:              `1.5px solid ${isActive ? 'rgba(52,211,153,0.40)' : 'rgba(255,255,255,0.10)'}`,
+                  color:               isActive ? '#34D399' : 'rgba(255,255,255,0.50)',
+                  fontFamily:          "'DM Sans',sans-serif",
+                  fontSize:            '13px',
+                  fontWeight:          600,
+                  cursor:              'pointer',
+                  display:             'flex',
+                  alignItems:          'center',
+                  gap:                 '7px',
+                  transition:          'all .15s',
+                  backdropFilter:      'blur(20px)',
+                  WebkitBackdropFilter:'blur(20px)',
+                }}>
+                {zone.label}
+                <span style={{
+                  background:   isActive ? 'rgba(52,211,153,0.18)' : 'rgba(255,255,255,0.09)',
+                  color:        isActive ? '#34D399' : freeCount === 0 ? 'rgba(255,255,255,0.22)' : 'rgba(255,255,255,0.45)',
+                  fontSize:     '10px',
+                  fontWeight:   700,
+                  padding:      '2px 7px',
+                  borderRadius: '100px',
+                  minWidth:     '18px',
+                  textAlign:    'center',
+                }}>
+                  {freeCount}
+                </span>
+              </button>
+            )
+          })}
+        </div>
+      )}
+
+      {/* ── Table card grid ──────────────────────────────────────────────────── */}
+      <div style={{ ...GLASS, padding:'16px' }}>
+        {loading ? (
+          <div style={{ height:'200px', display:'flex', alignItems:'center', justifyContent:'center' }}>
+            <div style={{ width:'26px', height:'26px', borderRadius:'50%', border:'2.5px solid rgba(52,211,153,0.20)', borderTopColor:'#34D399', animation:'spin 0.75s linear infinite' }}/>
+          </div>
+
+        ) : error ? (
+          <div style={{ height:'200px', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:'10px' }}>
+            <span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:'13px', color:'#fca5a5' }}>{error}</span>
+            <button onClick={fetchTables} style={{ fontFamily:"'DM Sans',sans-serif", fontSize:'12px', color:'#34D399', background:'none', border:'none', cursor:'pointer', textDecoration:'underline' }}>
+              {lang === 'DE' ? 'Erneut versuchen' : 'Try again'}
+            </button>
+          </div>
+
+        ) : visibleTables.length === 0 ? (
+          <div style={{ height:'160px', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:'8px' }}>
+            <span style={{ fontSize:'24px' }}>🪑</span>
+            <span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:'13px', color:'rgba(255,255,255,0.40)' }}>
+              {lang === 'DE' ? 'Keine Tische in diesem Bereich verfügbar' : 'No tables available in this section'}
+            </span>
+          </div>
+
+        ) : (
+          <>
+            {/* Section label when there's only one zone (no tabs shown above) */}
+            {zones.length <= 1 && zones[0] && (
+              <p style={{ fontFamily:"'DM Sans',sans-serif", fontSize:'10px', fontWeight:700, color:'rgba(255,255,255,0.25)', textTransform:'uppercase', letterSpacing:'0.08em', margin:'0 0 12px' }}>
+                {zones[0].label}
+              </p>
+            )}
+
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(86px, 1fr))', gap:'8px' }}>
+              {visibleTables.map(tb => {
+                const isSel      = tb.id === selId
+                const isReserved = tb.status === 'reserved'
+                const isHeld     = tb.status === 'held'
+                const tooSmall   = tb.capacity < partySize
+                const canClick   = tb.status === 'free' && !tooSmall
+
+                const bg = isSel      ? 'rgba(52,211,153,0.12)'
+                         : tooSmall   ? 'rgba(255,255,255,0.02)'
+                         : isHeld     ? 'rgba(251,191,36,0.10)'
+                         : isReserved ? 'rgba(100,116,139,0.10)'
+                         :              'rgba(255,255,255,0.08)'
+
+                const borderCol = isSel      ? 'rgba(52,211,153,0.55)'
+                                : tooSmall   ? 'rgba(255,255,255,0.07)'
+                                : isHeld     ? 'rgba(251,191,36,0.35)'
+                                : isReserved ? 'rgba(100,116,139,0.25)'
+                                :              'rgba(255,255,255,0.14)'
+
+                const nameColor = isSel      ? '#34D399'
+                                : tooSmall   ? 'rgba(255,255,255,0.18)'
+                                : isHeld     ? 'rgba(251,191,36,0.80)'
+                                : isReserved ? 'rgba(255,255,255,0.22)'
+                                :              'rgba(255,255,255,0.90)'
+
+                const subLabel = isReserved ? (lang === 'DE' ? 'Belegt'   : 'Reserved')
+                               : isHeld     ? (lang === 'DE' ? 'Gehalten' : 'Held')
+                               :              `${tb.capacity}${lang === 'DE' ? ' Pl.' : ' seats'}`
+
+                const subColor = isReserved ? 'rgba(255,255,255,0.18)'
+                               : isHeld     ? 'rgba(251,191,36,0.60)'
+                               : tooSmall   ? 'rgba(255,255,255,0.18)'
+                               :              'rgba(255,255,255,0.38)'
+
+                return (
+                  <div key={tb.id}
+                    onClick={() => canClick && handleSelect(tb)}
+                    className={isSel ? 'tbl-selected' : ''}
+                    style={{
+                      background:   bg,
+                      border:       `1.5px solid ${borderCol}`,
+                      borderRadius: '14px',
+                      padding:      '16px 10px 14px',
+                      textAlign:    'center',
+                      cursor:       canClick ? 'pointer' : 'default',
+                      position:     'relative',
+                      opacity:      (isReserved || (tooSmall && !isSel)) ? 0.50 : 1,
+                      transition:   'all .15s',
+                      userSelect:   'none',
+                    }}>
+
+                    {/* Status dot */}
+                    {(isSel || isHeld) && (
+                      <div style={{
+                        position:   'absolute', top:'7px', right:'7px',
+                        width:'6px', height:'6px', borderRadius:'50%',
+                        background:  isSel ? '#34D399' : '#fbbf24',
+                        boxShadow:   isSel ? '0 0 8px rgba(52,211,153,0.6)' : '0 0 6px rgba(251,191,36,0.5)',
+                      }}/>
+                    )}
+
+                    <div style={{ fontFamily:"'DM Serif Display',serif", fontSize:'16px', color:nameColor, letterSpacing:'-0.01em', lineHeight:1 }}>
+                      {tb.name}
+                    </div>
+                    <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:'10px', color:subColor, marginTop:'5px', fontWeight:500 }}>
+                      {subLabel}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* ── Legend ───────────────────────────────────────────────────────────── */}
+      <div style={{ display:'flex', gap:'12px', flexWrap:'wrap' }}>
         {[
-          { label: tr.free,                                      fill: 'rgba(255,255,255,0.18)', stroke: 'rgba(255,255,255,0.35)' },
-          { label: lang === 'DE' ? 'Gehalten' : 'Held',         fill: 'rgba(251,191,36,0.20)',  stroke: 'rgba(251,191,36,0.45)'  },
-          { label: tr.reserved,                                  fill: 'rgba(100,116,139,0.20)', stroke: 'rgba(100,116,139,0.35)' },
-          { label: tr.selected,                                  fill: 'rgba(52,211,153,0.18)',  stroke: '#34D399'                },
-          { label: lang === 'DE' ? 'Zu klein' : 'Too small',    fill: 'rgba(255,255,255,0.04)', stroke: 'rgba(255,255,255,0.12)' },
+          { label: tr.free,                                      bg:'rgba(255,255,255,0.18)', border:'rgba(255,255,255,0.35)' },
+          { label: lang==='DE' ? 'Gehalten'  : 'Held',          bg:'rgba(251,191,36,0.20)',  border:'rgba(251,191,36,0.45)'  },
+          { label: tr.reserved,                                  bg:'rgba(100,116,139,0.20)', border:'rgba(100,116,139,0.35)' },
+          { label: tr.selected,                                  bg:'rgba(52,211,153,0.18)',  border:'#34D399'                },
+          { label: lang==='DE' ? 'Zu klein'  : 'Too small',     bg:'rgba(255,255,255,0.04)', border:'rgba(255,255,255,0.12)' },
         ].map(item => (
-          <div key={item.label} style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-            <div style={{ width: '16px', height: '10px', borderRadius: '3px', background: item.fill, border: `1.5px solid ${item.stroke}` }}/>
-            <span style={{ fontFamily: "'DM Sans',sans-serif", fontSize: '10px', color: 'rgba(255,255,255,0.35)', fontWeight: 500 }}>{item.label}</span>
+          <div key={item.label} style={{ display:'flex', alignItems:'center', gap:'5px' }}>
+            <div style={{ width:'14px', height:'9px', borderRadius:'3px', background:item.bg, border:`1.5px solid ${item.border}` }}/>
+            <span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:'10px', color:'rgba(255,255,255,0.35)', fontWeight:500 }}>{item.label}</span>
           </div>
         ))}
       </div>
 
-      {/* Floor plan */}
-      <div style={{ ...GLASS, padding: '16px', overflow: 'hidden' }}>
-        {loading ? (
-          <div style={{ height: '260px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <div style={{ width: '26px', height: '26px', borderRadius: '50%', border: '2.5px solid rgba(52,211,153,0.20)', borderTopColor: '#34D399', animation: 'spin 0.75s linear infinite' }}/>
-          </div>
-        ) : error ? (
-          <div style={{ height: '260px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '10px' }}>
-            <span style={{ fontFamily: "'DM Sans',sans-serif", fontSize: '13px', color: '#fca5a5' }}>{error}</span>
-            <button onClick={fetchTables} style={{ fontFamily: "'DM Sans',sans-serif", fontSize: '12px', color: '#34D399', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}>
-              {lang === 'DE' ? 'Erneut versuchen' : 'Try again'}
-            </button>
-          </div>
-        ) : (() => {
-          const vpW = Math.max(420, ...Object.values(zones).map(z => z.x + z.w + 10))
-          const vpH = Math.max(280, ...Object.values(zones).map(z => z.y + z.h + 30))
-          const midX = Math.round(vpW / 2)
-          return (
-          <svg width="100%" viewBox={`0 0 ${vpW} ${vpH}`} style={{ display: 'block' }}>
-            <defs>
-              <filter id="tbl-glow"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
-              <filter id="tbl-sel"><feGaussianBlur stdDeviation="5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
-            </defs>
-
-            <rect x="2" y="2" width={vpW - 4} height={vpH - 4} rx="16"
-              fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.06)"
-              strokeWidth="1.5" strokeDasharray="6 5"/>
-
-            <rect x={midX - 40} y={vpH - 16} width="80" height="14" rx="5"
-              fill="rgba(255,255,255,0.08)" stroke="rgba(255,255,255,0.12)" strokeWidth="1"/>
-            <text x={midX} y={vpH - 6} textAnchor="middle"
-              style={{ fontFamily: "'DM Sans',sans-serif", fontSize: '7px', fill: 'rgba(255,255,255,0.40)' }}>
-              {tr.entrance}
-            </text>
-
-            {Object.entries(zones).map(([cat, zone]) => (
-              <g key={cat}>
-                <rect x={zone.x} y={zone.y} width={zone.w} height={zone.h} rx="10"
-                  fill="rgba(255,255,255,0.02)" stroke="rgba(255,255,255,0.06)" strokeWidth="1" strokeDasharray="4 4"/>
-                <text x={zone.x + 10} y={zone.y + 13}
-                  style={{ fontFamily: "'DM Sans',sans-serif", fontSize: '8px', fontWeight: 700, fill: 'rgba(255,255,255,0.18)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-                  {zone.label}
-                </text>
-              </g>
-            ))}
-
-            {tables.map(tb => {
-              const isSel      = tb.id === selId
-              const isReserved = tb.status === 'reserved'
-              const isHeld     = tb.status === 'held'
-              const tooSmall   = tb.capacity < partySize
-              const canClick   = tb.status === 'free' && !tooSmall
-
-              const fill   = isSel      ? 'rgba(52,211,153,0.18)'
-                           : tooSmall   ? 'rgba(255,255,255,0.04)'
-                           : isHeld     ? 'rgba(251,191,36,0.18)'
-                           : isReserved ? 'rgba(100,116,139,0.18)'
-                           :              'rgba(255,255,255,0.16)'
-              const stroke = isSel      ? '#34D399'
-                           : tooSmall   ? 'rgba(255,255,255,0.10)'
-                           : isHeld     ? 'rgba(251,191,36,0.50)'
-                           : isReserved ? 'rgba(100,116,139,0.35)'
-                           :              'rgba(255,255,255,0.30)'
-              const txtCol = tooSmall || isReserved ? 'rgba(255,255,255,0.20)'
-                           : isHeld     ? 'rgba(251,191,36,0.70)'
-                           : isSel      ? '#34D399'
-                           :              'rgba(255,255,255,0.85)'
-
-              return (
-                <g key={tb.id}
-                  onClick={() => canClick && handleSelect(tb)}
-                  onTouchEnd={(e) => { if (canClick) { e.preventDefault(); handleSelect(tb) } }}
-                  style={{ cursor: canClick ? 'pointer' : 'default', touchAction: 'manipulation' }}>
-                  <rect
-                    x={tb.x} y={tb.y} width={tb.w} height={tb.h} rx="9"
-                    fill={fill} stroke={stroke}
-                    strokeWidth={isSel ? 2 : 1.5}
-                    filter={isSel ? 'url(#tbl-sel)' : canClick ? 'url(#tbl-glow)' : ''}
-                    className={isSel ? 'tbl-pulse' : ''}
-                    style={{ transition: 'fill .2s, stroke .2s' }}
-                  />
-                  {isHeld && (
-                    <circle cx={tb.x + tb.w - 7} cy={tb.y + 7} r="4" fill="rgba(251,191,36,0.80)"/>
-                  )}
-                  <text x={tb.x + tb.w / 2} y={tb.y + tb.h / 2 - 5} textAnchor="middle"
-                    style={{ fontFamily: "'DM Sans',sans-serif", fontSize: '10px', fontWeight: 700, fill: txtCol, userSelect: 'none' }}>
-                    {tb.name}
-                  </text>
-                  <text x={tb.x + tb.w / 2} y={tb.y + tb.h / 2 + 8} textAnchor="middle"
-                    style={{ fontFamily: "'DM Sans',sans-serif", fontSize: '8px', fill: tooSmall ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.40)', userSelect: 'none' }}>
-                    {tb.capacity}P
-                  </text>
-                </g>
-              )
-            })}
-          </svg>
-          )
-        })()}
-      </div>
-
-      {/* Selected table action card */}
-      <div style={{ transition: 'opacity .2s ease, transform .2s ease', opacity: selTable ? 1 : 0, transform: selTable ? 'translateY(0)' : 'translateY(6px)', pointerEvents: selTable ? 'auto' : 'none' }}>
-        <div style={{ ...GLASS, padding: '16px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+      {/* ── Selected table action card ────────────────────────────────────────── */}
+      <div style={{ transition:'opacity .2s ease, transform .2s ease', opacity:selTable?1:0, transform:selTable?'translateY(0)':'translateY(6px)', pointerEvents:selTable?'auto':'none' }}>
+        <div style={{ ...GLASS, padding:'16px 18px', display:'flex', alignItems:'center', justifyContent:'space-between', gap:'12px' }}>
           <div>
-            <div style={{ fontFamily: "'DM Serif Display',serif", fontSize: '17px', color: '#fff', letterSpacing: '-0.01em' }}>
-              {lang === 'DE' ? 'Tisch' : 'Table'} {selTable?.name ?? '--'}
+            <div style={{ fontFamily:"'DM Serif Display',serif", fontSize:'17px', color:'#fff', letterSpacing:'-0.01em' }}>
+              {lang==='DE' ? 'Tisch' : 'Table'} {selTable?.name ?? '--'}
             </div>
-            <div style={{ fontFamily: "'DM Sans',sans-serif", fontSize: '12px', color: 'rgba(255,255,255,0.40)', marginTop: '2px' }}>
+            <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:'12px', color:'rgba(255,255,255,0.40)', marginTop:'2px' }}>
               {selTable?.capacity ?? '-'} {tr.persons}
-              {selTable && <span style={{ marginLeft: '6px', opacity: 0.6 }}>· {selTable.category}</span>}
+              {selTable && <span style={{ marginLeft:'6px', opacity:0.6 }}>· {selTable.category}</span>}
             </div>
           </div>
           <button onClick={handleNext} disabled={!selTable || holding}
             style={{
-              padding: '12px 20px', borderRadius: '14px', flexShrink: 0,
-              background: 'linear-gradient(135deg, #34D399 0%, #059669 100%)',
-              border: '1px solid rgba(52,211,153,0.50)',
-              color: '#022c22', fontFamily: "'DM Sans',sans-serif", fontSize: '13px', fontWeight: 800,
+              padding:'12px 20px', borderRadius:'14px', flexShrink:0,
+              background:'linear-gradient(135deg, #34D399 0%, #059669 100%)',
+              border:'1px solid rgba(52,211,153,0.50)',
+              color:'#022c22', fontFamily:"'DM Sans',sans-serif", fontSize:'13px', fontWeight:800,
               cursor: selTable && !holding ? 'pointer' : 'not-allowed',
-              whiteSpace: 'nowrap',
-              boxShadow: '0 6px 20px rgba(52,211,153,0.25)',
+              whiteSpace:'nowrap',
+              boxShadow:'0 6px 20px rgba(52,211,153,0.25)',
               opacity: holding ? 0.7 : 1,
-              transition: 'all .15s',
+              transition:'all .15s',
             }}>
-            {holding ? (lang === 'DE' ? 'Reserviere…' : 'Holding…') : tr.continueDetails}
+            {holding ? (lang==='DE' ? 'Reserviere…' : 'Holding…') : tr.continueDetails}
           </button>
         </div>
       </div>
