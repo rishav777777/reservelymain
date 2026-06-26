@@ -311,11 +311,11 @@ export default function ForRestaurantsPage() {
             <h2 className="text-2xl font-bold text-zinc-900 dark:text-[var(--text-base)]">{tx.pricing.heading}</h2>
             <p className="text-sm text-zinc-400 dark:text-[var(--text-faint)] mt-2">{tx.pricing.subtitle}</p>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
             {tx.pricing.tiers.map(({ name, price, description, features, cta }, i) => {
-              const highlight = i === 1
+              const highlight = i === 2
               const per = i === 0 ? tx.pricing.forever : tx.pricing.perMonth
-              const href = i === 2 ? 'mailto:hello@reservely.app' : '/login'
+              const href = '/login'
               return (
                 <div key={name}
                   className={[

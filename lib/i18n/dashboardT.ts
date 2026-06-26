@@ -390,7 +390,7 @@ export const dashboardT = {
           ],
         },
         {
-          id: 'unlimited', name: 'Unlimited', price: 59,
+          id: 'growth', name: 'Growth', price: 59,
           tagline: 'No limits. For high-volume venues.',
           features: [
             'Unlimited reservations', 'Unlimited staff accounts',
@@ -1051,7 +1051,7 @@ export const dashboardT = {
           ],
         },
         {
-          id: 'unlimited', name: 'Unlimited', price: 59,
+          id: 'growth', name: 'Growth', price: 59,
           tagline: 'Keine Limits. Für hochfrequentierte Locations.',
           features: [
             'Unbegrenzte Reservierungen', 'Unbegrenzte Mitarbeiter-Accounts',
