@@ -32,8 +32,23 @@ export default function ReservationsPage() {
   const [selectedDate, setSelectedDate] = useState(todayKey)
   const [loading, setLoading] = useState(true)
   const [fetchError, setFetchError] = useState<string | null>(null)
+  const [restaurantName, setRestaurantName] = useState('')
 
   const fetchReservations = useCallback(async () => {
+    // Fetch restaurant name alongside reservations
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('restaurant_id')
+      .single()
+    if (profile?.restaurant_id) {
+      const { data: rest } = await supabase
+        .from('restaurants')
+        .select('name')
+        .eq('id', profile.restaurant_id)
+        .single()
+      if (rest?.name) setRestaurantName(rest.name)
+    }
+
     const { data, error } = await supabase
       .from('reservations')
       .select('*')
@@ -149,8 +164,8 @@ export default function ReservationsPage() {
             <Leaf size={18} color="#ffffff" strokeWidth={2}/>
           </div>
           <div>
-            <p style={{ fontFamily: "'DM Serif Display', serif", fontSize: 20, fontWeight: 400, color: '#1C231F', letterSpacing: '-0.02em', lineHeight: 1 }}>Der Ledera Wirtshaus</p>
-            <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 11, fontWeight: 500, color: '#8fa393', letterSpacing: '0.12em', textTransform: 'uppercase', marginTop: 2 }}>Reservierungs-Dashboard</p>
+            <p style={{ fontFamily: "'DM Serif Display', serif", fontSize: 20, fontWeight: 400, color: '#1C231F', letterSpacing: '-0.02em', lineHeight: 1 }}>{restaurantName || 'Reservely'}</p>
+            <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 11, fontWeight: 500, color: '#8fa393', letterSpacing: '0.12em', textTransform: 'uppercase', marginTop: 2 }}>{lang === 'DE' ? 'Reservierungs-Dashboard' : 'Reservations Dashboard'}</p>
           </div>
         </div>
 
