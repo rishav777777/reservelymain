@@ -53,19 +53,8 @@ export default function LayoutEditorPage() {
 
   const ZONE_DEFAULTS = { is_seasonal: false, season_start: '', season_end: '', is_open: true }
 
-  const [zones, setZones] = useState<Zone[]>([
-    { id: '1', label: 'INDOOR',  x: 20,  y: 20,  w: 420, h: 240, ...ZONE_DEFAULTS },
-    { id: '2', label: 'BAR',     x: 460, y: 20,  w: 280, h: 240, ...ZONE_DEFAULTS },
-    { id: '3', label: 'OUTDOOR', x: 20,  y: 280, w: 220, h: 200, ...ZONE_DEFAULTS },
-    { id: '4', label: 'VIP',     x: 260, y: 280, w: 480, h: 200, ...ZONE_DEFAULTS },
-  ])
-
-  const [tables, setTables] = useState<TableItem[]>([
-    { id: 't1', name: 'T1', capacity: 2, category: 'INDOOR',  x: 50,  y: 70,  w: 58, h: 44 },
-    { id: 't2', name: 'T2', capacity: 4, category: 'INDOOR',  x: 140, y: 70,  w: 58, h: 44 },
-    { id: 'b1', name: 'B1', capacity: 2, category: 'BAR',     x: 490, y: 70,  w: 58, h: 44 },
-    { id: 't4', name: 'T4', capacity: 4, category: 'OUTDOOR', x: 50,  y: 330, w: 58, h: 44 },
-  ])
+  const [zones,  setZones]  = useState<Zone[]>([])
+  const [tables, setTables] = useState<TableItem[]>([])
 
   const [newTableName, setNewTableName] = useState('')
   const [newTableCap, setNewTableCap] = useState(4)
@@ -405,6 +394,15 @@ export default function LayoutEditorPage() {
               alignItems: 'center', justifyContent: 'center',
               background: '#f9fafb', border: '1px solid #e4e7eb', borderRadius: 16 }}>
               <p className="text-xs text-zinc-400">{tx.loadingLayout}</p>
+            </div>
+          ) : zones.length === 0 ? (
+            <div style={{ width: canvasWidth, height: canvasHeight, display: 'flex', flexDirection: 'column',
+              alignItems: 'center', justifyContent: 'center', gap: 8,
+              background: '#f9fafb', border: '1.5px dashed #d1d5db', borderRadius: 16 }}>
+              <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 600, color: '#6b7280' }}>No layout configured yet</p>
+              <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 11, color: '#9ca3af', maxWidth: 280, textAlign: 'center' }}>
+                Add a section (e.g. "Indoor") using the panel on the left, then drag tables onto the canvas.
+              </p>
             </div>
           ) : (
           <svg
