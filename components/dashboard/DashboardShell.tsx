@@ -12,6 +12,7 @@ import {
 import { useLang } from '@/components/i18n/LanguageProvider'
 import { LanguageToggle } from '@/components/i18n/LanguageToggle'
 import { dashboardT } from '@/lib/i18n/dashboardT'
+import { ImpersonationBanner } from '@/components/dashboard/ImpersonationBanner'
 
 interface Props {
   children:       React.ReactNode
@@ -89,8 +90,10 @@ export function DashboardShell({ children, userRole, restaurantName, userName, w
   const userInitials = userName.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2) || 'U'
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="flex flex-col h-screen overflow-hidden">
+      <ImpersonationBanner />
 
+      <div className="flex flex-1 overflow-hidden">
       {/* ── Sidebar ── */}
       <aside className="w-[230px] shrink-0 bg-white border-r border-zinc-100 flex flex-col">
 
@@ -199,6 +202,7 @@ export function DashboardShell({ children, userRole, restaurantName, userName, w
       <main className="flex-1 overflow-auto bg-zinc-50/60">
         {children}
       </main>
+      </div>
     </div>
   )
 }

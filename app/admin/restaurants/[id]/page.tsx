@@ -66,11 +66,13 @@ export default function AdminRestaurantDetailPage() {
 
   const [data,         setData]         = useState<RestaurantDetail | null>(null)
   const [loading,      setLoading]      = useState(true)
-  const [acting,        setActing]        = useState(false)
-  const [showDelete,    setShowDelete]    = useState(false)
-  const [deleteReason,  setDeleteReason]  = useState('')
-  const [resetSent,     setResetSent]     = useState(false)
-  const [impersonating, setImpersonating] = useState(false)
+  const [acting,          setActing]          = useState(false)
+  const [showDelete,      setShowDelete]      = useState(false)
+  const [deleteReason,    setDeleteReason]    = useState('')
+  const [resetSent,       setResetSent]       = useState(false)
+  const [showImpersonate, setShowImpersonate] = useState(false)
+  const [impReason,       setImpReason]       = useState('')
+  const [impersonating,   setImpersonating]   = useState(false)
 
   function load() {
     fetch(`/api/admin/restaurants/${id}`)
@@ -118,15 +120,17 @@ export default function AdminRestaurantDetailPage() {
   }
 
   async function impersonate() {
-    if (!data?.owner_email) return
+    if (!data?.owner_email || !impReason.trim()) return
     setImpersonating(true)
+    setShowImpersonate(false)
     const res = await fetch('/api/admin/impersonate', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ email: data.owner_email }),
+      body:    JSON.stringify({ email: data.owner_email, reason: impReason.trim() }),
     })
     const json = await res.json()
     setImpersonating(false)
+    setImpReason('')
     if (json.url) window.open(json.url, '_blank')
     else alert(json.error ?? 'Failed to generate link')
   }
@@ -284,7 +288,7 @@ export default function AdminRestaurantDetailPage() {
           <Row label="Impersonate" value={
             data.owner_email ? (
               <button
-                onClick={impersonate}
+                onClick={() => { setImpReason(''); setShowImpersonate(true) }}
                 disabled={impersonating || !data.owner_email}
                 className="flex items-center gap-1.5 text-xs font-medium text-zinc-500 hover:text-amber-600 transition-colors disabled:opacity-50"
               >
@@ -351,6 +355,52 @@ export default function AdminRestaurantDetailPage() {
           } />
         </dl>
       </div>
+
+      {/* Impersonation reason modal (GDPR: reason is mandatory before access) */}
+      {showImpersonate && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="bg-white rounded-xl shadow-xl border border-zinc-200 w-full max-w-sm mx-4 p-6 space-y-4">
+            <div className="flex items-start gap-3">
+              <div className="w-9 h-9 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
+                <LogIn className="w-4 h-4 text-amber-600" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-zinc-900">Log in as {data.owner_name ?? data.owner_email}</p>
+                <p className="text-xs text-zinc-400 mt-1 leading-relaxed">
+                  Required by GDPR. Your admin ID, this reason, and the timestamp are permanently recorded.
+                  A banner will warn you that all actions are audited.
+                </p>
+              </div>
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-zinc-700">Reason for access <span className="text-red-500">*</span></label>
+              <input
+                type="text"
+                value={impReason}
+                onChange={e => setImpReason(e.target.value)}
+                placeholder="e.g. Support ticket #1204 — user can't access dashboard"
+                className="w-full text-xs border border-zinc-200 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-amber-400"
+                autoFocus
+              />
+            </div>
+            <div className="flex gap-2 pt-1">
+              <button
+                onClick={() => { setShowImpersonate(false); setImpReason('') }}
+                className="flex-1 text-xs font-medium py-2 rounded-lg border border-zinc-200 text-zinc-600 hover:bg-zinc-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={impersonate}
+                disabled={!impReason.trim()}
+                className="flex-1 text-xs font-medium py-2 rounded-lg bg-amber-500 text-white hover:bg-amber-600 transition-colors disabled:opacity-40"
+              >
+                Confirm & open
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Delete confirm dialog */}
       {showDelete && (
