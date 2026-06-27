@@ -5,6 +5,7 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend,
 } from 'recharts'
+import { BarChart2 } from 'lucide-react'
 import { useLang } from '@/components/i18n/LanguageProvider'
 import { dashboardT } from '@/lib/i18n/dashboardT'
 
@@ -61,6 +62,23 @@ export function AnalyticsClient({ initialData }: { initialData: AnalyticsData })
     ...d,
     label: new Date(d.date + 'T12:00:00').toLocaleDateString(locale, { weekday: 'short', day: 'numeric' }),
   }))
+
+  if (summary.total === 0) {
+    return (
+      <div className="p-5">
+        <h1 className="text-sm font-semibold text-gray-900 mb-1">{tx.title}</h1>
+        <div className="flex flex-col items-center justify-center py-24 text-center">
+          <div className="w-12 h-12 rounded-full bg-zinc-100 flex items-center justify-center mb-4">
+            <BarChart2 className="w-5 h-5 text-zinc-400" />
+          </div>
+          <p className="text-sm font-medium text-zinc-700 mb-1">No data yet</p>
+          <p className="text-xs text-zinc-400 max-w-xs">
+            Analytics will appear once your first reservations come in.
+          </p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="p-5 space-y-5">

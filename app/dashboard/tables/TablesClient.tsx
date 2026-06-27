@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
-import { Plus, ImageIcon, Power, PowerOff } from 'lucide-react'
+import { Plus, ImageIcon, Power, PowerOff, LayoutGrid } from 'lucide-react'
 import { toast } from 'sonner'
 import { TableDetailPanel } from '@/components/dashboard/tables/TableDetailPanel'
 import { useLang } from '@/components/i18n/LanguageProvider'
@@ -128,6 +128,25 @@ export function TablesClient({ tables: initial, restaurantId, userRole }: Tables
       </div>
 
       <div>
+        {sortedCategories.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-20 text-center">
+            <div className="w-12 h-12 rounded-full bg-zinc-100 flex items-center justify-center mb-4">
+              <LayoutGrid className="w-5 h-5 text-zinc-400" />
+            </div>
+            <p className="text-sm font-medium text-zinc-700 mb-1">No tables yet</p>
+            <p className="text-xs text-zinc-400 max-w-xs">
+              Add your first table to start accepting reservations and managing seating.
+            </p>
+            {canManage && (
+              <button
+                onClick={() => setAddOpen(true)}
+                className="mt-5 flex items-center gap-1.5 bg-brand-primary hover:bg-brand-primary/90 text-white text-xs font-medium px-4 py-2 rounded-md transition-colors"
+              >
+                <Plus size={12} /> {tx.addTable}
+              </button>
+            )}
+          </div>
+        )}
         {sortedCategories.map((cat) => {
           const areaTables = grouped[cat]
           const stats = areaStats(areaTables)

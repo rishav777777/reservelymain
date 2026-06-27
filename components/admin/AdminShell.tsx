@@ -4,14 +4,16 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, Building2, FileText, CreditCard,
-  Star, Settings, ChevronLeft,
+  Star, Settings, ChevronLeft, Users, ScrollText,
 } from 'lucide-react'
 import { LanguageToggle } from '@/components/i18n/LanguageToggle'
 
 const NAV = [
   { label: 'Overview',      href: '/admin',               icon: LayoutDashboard, exact: true },
   { label: 'Restaurants',   href: '/admin/restaurants',   icon: Building2 },
+  { label: 'Users',         href: '/admin/users',         icon: Users },
   { label: 'Demo Requests', href: '/admin/demo-requests', icon: FileText },
+  { label: 'Audit Log',     href: '/admin/audit',         icon: ScrollText },
   { label: 'Billing',       href: '/admin/billing',       icon: CreditCard },
   { label: 'Content',       href: '/admin/content',       icon: Star },
   { label: 'Settings',      href: '/admin/settings',      icon: Settings },
