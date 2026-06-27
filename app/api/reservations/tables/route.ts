@@ -1,15 +1,12 @@
-import { createClient } from '@/lib/supabase/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
 
-// GET /api/reservations/tables?date=2026-06-15&time=19:00&duration=90
+// GET /api/reservations/tables?date=YYYY-MM-DD&time=HH:MM&duration=90&restaurantId=xxx
 //
-// Returns all active tables for the authenticated user's own restaurant with live status:
-//   "free"     → bookable right now
-//   "held"     → someone is mid-booking (3-min hold)
-//   "reserved" → confirmed or arrived reservation overlaps this slot
-//
-// restaurantId URL param is IGNORED — always uses the authenticated user's restaurant.
+// Public endpoint called by the guest booking portal (Screen2) to check live
+// table availability for a specific restaurant/date/time slot.
+// Uses the service-role admin client so it works for unauthenticated guests.
+// restaurantId is always filtered explicitly — no cross-tenant leakage.
 
 function getAdmin() {
   return createAdminClient(
@@ -36,29 +33,15 @@ function overlaps(
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
-  const date     = searchParams.get('date')
-  const time     = searchParams.get('time')
-  const duration = parseInt(searchParams.get('duration') ?? '90', 10)
+  const date         = searchParams.get('date')
+  const time         = searchParams.get('time')
+  const duration     = parseInt(searchParams.get('duration') ?? '90', 10)
+  const restaurantId = searchParams.get('restaurantId')
 
-  if (!date || !time) {
-    return NextResponse.json({ error: 'date and time required' }, { status: 400 })
+  if (!date || !time || !restaurantId) {
+    return NextResponse.json({ error: 'date, time, restaurantId required' }, { status: 400 })
   }
 
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('restaurant_id')
-    .eq('id', user.id)
-    .single()
-
-  if (!profile?.restaurant_id) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-  }
-
-  const restaurantId = profile.restaurant_id
   const admin = getAdmin()
 
   const [{ data: tables, error: tErr }, { data: confirmedRes }, { data: holds }] =
