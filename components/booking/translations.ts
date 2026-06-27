@@ -32,6 +32,11 @@ export const t = {
     submit: "Reservierungsanfrage senden",
     paymentOptions: ["Bar", "Karte"],
     days: ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"],
+    consentBasic:    "Ich stimme zu, dass meine persönlichen Daten zum Zweck der Reservierungsabwicklung gespeichert werden (DSGVO Art. 6).",
+    consentProfiling: "Ich erlaube dem Restaurant, ein Gastprofil für mich zu erstellen, um mich als Stammgast zu erkennen (optional).",
+    consentMarketing: "Ich möchte Angebote und Neuigkeiten des Restaurants per E-Mail erhalten (optional).",
+    privacyLink:     "Datenschutz",
+    sharingNotice:   (name: string) => `Ihre Daten werden ausschließlich mit ${name} geteilt, um Ihre Reservierung zu verwalten.`,
   },
   EN: {
     restaurantName: "Der Ledera",
@@ -64,5 +69,10 @@ export const t = {
     submit: "Send Reservation Request",
     paymentOptions: ["Cash", "Card"],
     days: ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"],
+    consentBasic:    "I consent to my personal data being stored for reservation purposes in accordance with GDPR Art. 6.",
+    consentProfiling: "Allow the restaurant to create a dining profile to recognise me as a returning guest (optional).",
+    consentMarketing: "I'd like to receive offers and news from the restaurant by email (optional).",
+    privacyLink:     "Privacy policy",
+    sharingNotice:   (name: string) => `Your details will be shared securely with ${name} solely to manage your reservation.`,
   },
 } satisfies Record<Lang, Record<string, unknown>>;

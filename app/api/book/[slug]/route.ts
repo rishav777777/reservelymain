@@ -58,20 +58,24 @@ export async function POST(
     notes             = null,
     duration_minutes  = 90,
     guest_consented   = false,
+    profiling_consent = false,
+    marketing_consent = false,
     session_id        = null,
   } = body as {
-    guest_name:        string
-    guest_email:       string
-    guest_phone?:      string | null
-    party_size:        number
-    reservation_date:  string
-    reservation_time:  string
-    table_id?:         string | null
-    menu_preference?:  string | null
-    notes?:            string | null
-    duration_minutes?: number
-    guest_consented?:  boolean
-    session_id?:       string | null
+    guest_name:         string
+    guest_email:        string
+    guest_phone?:       string | null
+    party_size:         number
+    reservation_date:   string
+    reservation_time:   string
+    table_id?:          string | null
+    menu_preference?:   string | null
+    notes?:             string | null
+    duration_minutes?:  number
+    guest_consented?:   boolean
+    profiling_consent?: boolean
+    marketing_consent?: boolean
+    session_id?:        string | null
   }
 
   // Validate required fields
@@ -182,8 +186,18 @@ export async function POST(
       source:           'guest_portal',
       menu_preference:  menu_preference || null,
       notes:            notes?.trim() || null,
-      guest_consented:  guest_consented,
-      consented_at:     guest_consented ? new Date().toISOString() : null,
+      guest_consented:      guest_consented,
+      consented_at:         guest_consented ? new Date().toISOString() : null,
+      profiling_consent:    profiling_consent,
+      profiling_consent_at: profiling_consent ? new Date().toISOString() : null,
+      marketing_consent:    marketing_consent,
+      marketing_consent_at: marketing_consent ? new Date().toISOString() : null,
+      // PII purge 60 days after the reservation date
+      pii_purge_after: (() => {
+        const d = new Date(reservation_date)
+        d.setDate(d.getDate() + 60)
+        return d.toISOString()
+      })(),
     })
     .select('*, restaurant_tables(name, capacity)')
     .single()

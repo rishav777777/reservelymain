@@ -268,6 +268,7 @@ export function BookingClient({
                 seats={partySize}
                 restaurantId={restaurantId}
                 restaurantSlug={restaurantSlug}
+                restaurantName={restaurantName}
                 sessionId={sessionId}
                 demoMode={demoMode}
                 durationMinutes={defaultDuration}

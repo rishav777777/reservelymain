@@ -15,6 +15,7 @@ interface Props {
   seats: number;
   restaurantId: string;
   restaurantSlug: string;
+  restaurantName: string;
   sessionId: string;
   demoMode?: boolean;
   onBack: () => void;
@@ -62,16 +63,18 @@ function addMinutes(hhmm: string, mins: number): string {
 
 export function Screen3({
   lang, dateStr, rawDate, timeStr, tableId, tableName,
-  seats, restaurantSlug, sessionId, demoMode = false,
+  seats, restaurantSlug, restaurantName, sessionId, demoMode = false,
   durationMinutes = 90,
 }: Props) {
   const tr = t[lang];
 
-  const [name,          setName]          = useState("");
-  const [phone,         setPhone]         = useState("");
-  const [email,         setEmail]         = useState("");
-  const [notes,         setNotes]         = useState("");
-  const [consented,     setConsented]     = useState(false);
+  const [name,              setName]              = useState("");
+  const [phone,             setPhone]             = useState("");
+  const [email,             setEmail]             = useState("");
+  const [notes,             setNotes]             = useState("");
+  const [consented,         setConsented]         = useState(false);
+  const [profilingConsent,  setProfilingConsent]  = useState(false);
+  const [marketingConsent,  setMarketingConsent]  = useState(false);
   const [sending,       setSending]       = useState(false);
   const [success,       setSuccess]       = useState(false);
   const [submitError,   setSubmitError]   = useState<string | null>(null);
@@ -99,17 +102,19 @@ export function Screen3({
         method:  "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          guest_name:       name.trim(),
-          guest_email:      email.trim(),
-          guest_phone:      phone.trim() || null,
-          party_size:       seats,
-          reservation_date: rawDate,
-          reservation_time: parseTimeFrom(timeStr),
-          table_id:         tableId || null,
-          notes:            notes.trim() || null,
-          duration_minutes: durationMinutes,
-          guest_consented:  true,
-          session_id:       sessionId,
+          guest_name:        name.trim(),
+          guest_email:       email.trim(),
+          guest_phone:       phone.trim() || null,
+          party_size:        seats,
+          reservation_date:  rawDate,
+          reservation_time:  parseTimeFrom(timeStr),
+          table_id:          tableId || null,
+          notes:             notes.trim() || null,
+          duration_minutes:  durationMinutes,
+          guest_consented:   consented,
+          profiling_consent: profilingConsent,
+          marketing_consent: marketingConsent,
+          session_id:        sessionId,
         }),
       });
 
@@ -230,29 +235,86 @@ export function Screen3({
           </div>
         </div>
 
-        {/* GDPR Consent */}
+        {/* ── Data-sharing disclosure ── */}
         <div style={{
-          background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.10)",
-          borderRadius: "14px", padding: "14px 16px",
-          display: "flex", alignItems: "flex-start", gap: "12px",
+          background: "rgba(52,211,153,0.05)", border: "1px solid rgba(52,211,153,0.15)",
+          borderRadius: "12px", padding: "11px 14px",
         }}>
-          <input
-            type="checkbox" id="guest-consent" checked={consented}
-            onChange={e => setConsented(e.target.checked)}
-            style={{ marginTop: "2px", width: "16px", height: "16px", accentColor: "#34D399", flexShrink: 0, cursor: "pointer" }}
-          />
-          <label htmlFor="guest-consent" style={{
-            fontFamily: "'DM Sans', sans-serif", fontSize: "12px",
-            color: "rgba(255,255,255,0.45)", lineHeight: 1.6, cursor: "pointer",
+          <p style={{
+            fontFamily: "'DM Sans', sans-serif", fontSize: "11px",
+            color: "rgba(255,255,255,0.45)", lineHeight: 1.6, margin: 0,
           }}>
-            {lang === "DE"
-              ? "Ich stimme zu, dass meine persönlichen Daten zum Zweck der Reservierungsabwicklung gespeichert werden (DSGVO Art. 6)."
-              : "I consent to my personal data being stored for reservation purposes in accordance with GDPR Art. 6."}
-            {" "}
-            <a href="/privacy" target="_blank" style={{ color: "rgba(52,211,153,0.70)", textDecoration: "none" }}>
-              {lang === "DE" ? "Datenschutz" : "Privacy policy"}
-            </a>
-          </label>
+            {(tr.sharingNotice as (name: string) => string)(restaurantName)}
+          </p>
+        </div>
+
+        {/* ── Consent checkboxes ── */}
+        <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+
+          {/* 1. Mandatory: basic booking consent */}
+          <div style={{
+            background: "rgba(255,255,255,0.04)", border: `1px solid ${consented ? "rgba(52,211,153,0.35)" : "rgba(255,255,255,0.10)"}`,
+            borderRadius: "14px", padding: "14px 16px",
+            display: "flex", alignItems: "flex-start", gap: "12px",
+          }}>
+            <input
+              type="checkbox" id="guest-consent" checked={consented}
+              onChange={e => setConsented(e.target.checked)}
+              style={{ marginTop: "2px", width: "16px", height: "16px", accentColor: "#34D399", flexShrink: 0, cursor: "pointer" }}
+            />
+            <label htmlFor="guest-consent" style={{
+              fontFamily: "'DM Sans', sans-serif", fontSize: "12px",
+              color: "rgba(255,255,255,0.55)", lineHeight: 1.6, cursor: "pointer",
+            }}>
+              <span style={{ color: "rgba(255,255,255,0.80)", fontWeight: 600 }}>
+                {lang === "DE" ? "Pflichtfeld" : "Required"}
+              </span>
+              {" — "}
+              {tr.consentBasic as string}
+              {" "}
+              <a href="/privacy" target="_blank" style={{ color: "rgba(52,211,153,0.70)", textDecoration: "none" }}>
+                {tr.privacyLink as string}
+              </a>
+            </label>
+          </div>
+
+          {/* 2. Optional: profiling consent */}
+          <div style={{
+            background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)",
+            borderRadius: "14px", padding: "12px 16px",
+            display: "flex", alignItems: "flex-start", gap: "12px",
+          }}>
+            <input
+              type="checkbox" id="profiling-consent" checked={profilingConsent}
+              onChange={e => setProfilingConsent(e.target.checked)}
+              style={{ marginTop: "2px", width: "15px", height: "15px", accentColor: "#34D399", flexShrink: 0, cursor: "pointer" }}
+            />
+            <label htmlFor="profiling-consent" style={{
+              fontFamily: "'DM Sans', sans-serif", fontSize: "11.5px",
+              color: "rgba(255,255,255,0.38)", lineHeight: 1.6, cursor: "pointer",
+            }}>
+              {tr.consentProfiling as string}
+            </label>
+          </div>
+
+          {/* 3. Optional: marketing consent */}
+          <div style={{
+            background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)",
+            borderRadius: "14px", padding: "12px 16px",
+            display: "flex", alignItems: "flex-start", gap: "12px",
+          }}>
+            <input
+              type="checkbox" id="marketing-consent" checked={marketingConsent}
+              onChange={e => setMarketingConsent(e.target.checked)}
+              style={{ marginTop: "2px", width: "15px", height: "15px", accentColor: "#34D399", flexShrink: 0, cursor: "pointer" }}
+            />
+            <label htmlFor="marketing-consent" style={{
+              fontFamily: "'DM Sans', sans-serif", fontSize: "11.5px",
+              color: "rgba(255,255,255,0.38)", lineHeight: 1.6, cursor: "pointer",
+            }}>
+              {tr.consentMarketing as string}
+            </label>
+          </div>
         </div>
 
         {submitError && !slotFull && (

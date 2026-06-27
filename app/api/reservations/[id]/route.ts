@@ -122,8 +122,8 @@ export async function PATCH(
     },
   }).catch(() => {})
 
-  // Fire-and-forget guest profile upsert when reservation is completed
-  if (status === 'completed' && data.guest_email) {
+  // Fire-and-forget guest profile upsert — only when the guest explicitly consented to profiling
+  if (status === 'completed' && data.guest_email && data.profiling_consent === true) {
     ;(async () => {
       try {
         const { data: existing_guest } = await supabase
