@@ -19,20 +19,28 @@ export async function GET() {
     plansRes,
     suspendedRes,
     setupRes,
+    deletedThisMonthRes,
+    trialingRes,
+    activePayingRes,
   ] = await Promise.all([
-    admin.from('restaurants').select('id', { count: 'exact', head: true }),
+    admin.from('restaurants').select('id', { count: 'exact', head: true }).is('deleted_at', null),
     admin.from('reservations').select('id', { count: 'exact', head: true }).eq('reservation_date', today),
     admin.from('reservations').select('id', { count: 'exact', head: true }),
     admin.from('demo_requests').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
-    admin.from('restaurants').select('id', { count: 'exact', head: true }).gte('created_at', monthStart),
-    admin.from('restaurants').select('subscription_plan'),
+    admin.from('restaurants').select('id', { count: 'exact', head: true }).gte('created_at', monthStart).is('deleted_at', null),
+    admin.from('restaurants').select('subscription_plan').is('deleted_at', null),
     admin.from('profiles').select('restaurant_id').eq('is_active', false).eq('role', 'owner'),
-    admin.from('restaurants').select('id', { count: 'exact', head: true }).eq('setup_completed', true),
+    admin.from('restaurants').select('id', { count: 'exact', head: true }).eq('setup_completed', true).is('deleted_at', null),
+    admin.from('restaurants').select('id', { count: 'exact', head: true }).gte('deleted_at', monthStart),
+    admin.from('restaurants').select('id', { count: 'exact', head: true }).eq('subscription_status', 'trialing').is('deleted_at', null),
+    admin.from('restaurants').select('id', { count: 'exact', head: true }).eq('subscription_status', 'active').is('deleted_at', null),
   ])
 
   const suspendedIds  = new Set((suspendedRes.data ?? []).map(p => p.restaurant_id))
   const total         = restaurantsRes.count ?? 0
   const setupComplete = setupRes.count ?? 0
+  const trialing      = trialingRes.count ?? 0
+  const activePaying  = activePayingRes.count ?? 0
 
   const planCounts: Record<string, number> = {}
   for (const r of (plansRes.data ?? [])) {
@@ -45,16 +53,24 @@ export async function GET() {
     (sum, [tier, count]) => sum + count * (PRICES[tier] ?? 59), 0
   )
 
+  const conversionRate = (trialing + activePaying) > 0
+    ? Math.round((activePaying / (trialing + activePaying)) * 100)
+    : null
+
   return NextResponse.json({
     total_restaurants:     total,
     active_restaurants:    total - suspendedIds.size,
     suspended_restaurants: suspendedIds.size,
     setup_completion_rate: total > 0 ? Math.round((setupComplete / total) * 100) : 0,
     new_this_month:        newRes.count ?? 0,
+    deleted_this_month:    deletedThisMonthRes.count ?? 0,
     reservations_today:    reservationsTodayRes.count ?? 0,
     reservations_total:    reservationsTotalRes.count ?? 0,
     pending_demo_requests: demoRes.count ?? 0,
     estimated_mrr:         estimatedMrr,
+    trialing_count:        trialing,
+    active_paying_count:   activePaying,
+    trial_conversion_rate: conversionRate,
     plans: Object.entries(planCounts).map(([plan_tier, count]) => ({ plan_tier, count })),
   })
 }

@@ -1,6 +1,7 @@
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { Resend } from 'resend'
 import { NextRequest, NextResponse } from 'next/server'
+import { logEmail } from '@/lib/services/email-logger'
 
 function slugify(name: string): string {
   return name
@@ -108,10 +109,11 @@ export async function POST(request: NextRequest) {
 
       // 1. Notify admin
       if (process.env.ADMIN_NOTIFICATION_EMAIL) {
+        const adminSubject = `New restaurant signup — ${restaurantName}`
         await resend.emails.send({
           from,
           to: process.env.ADMIN_NOTIFICATION_EMAIL,
-          subject: `New restaurant signup — ${restaurantName}`,
+          subject: adminSubject,
           html: `
             <div style="font-family:sans-serif;max-width:480px">
               <h2 style="color:#0F172A">New signup requires review</h2>
@@ -132,14 +134,15 @@ export async function POST(request: NextRequest) {
               </p>
             </div>
           `,
-        }).catch(() => {})
+        }).then(() => logEmail({ type: 'signup_admin_notification', to: process.env.ADMIN_NOTIFICATION_EMAIL!, subject: adminSubject })).catch(() => {})
       }
 
       // 2. Confirm receipt to the applicant
+      const applicantSubject = 'Your Reservely application is under review'
       await resend.emails.send({
         from,
         to: email.trim(),
-        subject: 'Your Reservely application is under review',
+        subject: applicantSubject,
         html: `
           <div style="font-family:sans-serif;max-width:480px">
             <h2 style="color:#0F172A">Thanks for signing up, ${fullName.split(' ')[0]}!</h2>
@@ -159,7 +162,7 @@ export async function POST(request: NextRequest) {
             </p>
           </div>
         `,
-      }).catch(() => {})
+      }).then(() => logEmail({ type: 'signup_applicant_confirmation', to: email.trim(), subject: applicantSubject })).catch(() => {})
     }
 
     return NextResponse.json({ success: true }, { status: 201 })

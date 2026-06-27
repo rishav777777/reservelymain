@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { Resend } from 'resend'
 import { NextRequest, NextResponse } from 'next/server'
+import { logEmail } from '@/lib/services/email-logger'
 
 export async function PATCH(
   request: NextRequest,
@@ -109,16 +110,17 @@ export async function PATCH(
               </p>
             </div>
           `,
-        }).catch(() => {})
+        }).then(() => logEmail({ type: 'demo_approval', to: updatedRequest.email, subject: 'Your Reservely account is approved! 🎉' })).catch(() => {})
       }
     }
 
     if (status === 'declined' && updatedRequest) {
       if (resend) {
+        const declineSubject = 'Update on your Reservely application'
         await resend.emails.send({
           from,
           to: updatedRequest.email,
-          subject: 'Update on your Reservely application',
+          subject: declineSubject,
           html: `
             <div style="font-family:sans-serif;max-width:480px">
               <h2 style="color:#0F172A">Application update</h2>
@@ -134,7 +136,7 @@ export async function PATCH(
               </p>
             </div>
           `,
-        }).catch(() => {})
+        }).then(() => logEmail({ type: 'demo_rejection', to: updatedRequest.email, subject: declineSubject })).catch(() => {})
       }
     }
 

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { ArrowLeft, CheckCircle2, XCircle, ExternalLink, CreditCard, User, MapPin, Trash2, RotateCcw, AlertTriangle, Building2, KeyRound } from 'lucide-react'
+import { ArrowLeft, CheckCircle2, XCircle, ExternalLink, CreditCard, User, MapPin, Trash2, RotateCcw, AlertTriangle, Building2, KeyRound, LogIn } from 'lucide-react'
 import Link from 'next/link'
 
 interface RestaurantDetail {
@@ -66,10 +66,11 @@ export default function AdminRestaurantDetailPage() {
 
   const [data,         setData]         = useState<RestaurantDetail | null>(null)
   const [loading,      setLoading]      = useState(true)
-  const [acting,       setActing]       = useState(false)
-  const [showDelete,   setShowDelete]   = useState(false)
-  const [deleteReason, setDeleteReason] = useState('')
-  const [resetSent,    setResetSent]    = useState(false)
+  const [acting,        setActing]        = useState(false)
+  const [showDelete,    setShowDelete]    = useState(false)
+  const [deleteReason,  setDeleteReason]  = useState('')
+  const [resetSent,     setResetSent]     = useState(false)
+  const [impersonating, setImpersonating] = useState(false)
 
   function load() {
     fetch(`/api/admin/restaurants/${id}`)
@@ -114,6 +115,20 @@ export default function AdminRestaurantDetailPage() {
     })
     load()
     setActing(false)
+  }
+
+  async function impersonate() {
+    if (!data?.owner_email) return
+    setImpersonating(true)
+    const res = await fetch('/api/admin/impersonate', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ email: data.owner_email }),
+    })
+    const json = await res.json()
+    setImpersonating(false)
+    if (json.url) window.open(json.url, '_blank')
+    else alert(json.error ?? 'Failed to generate link')
   }
 
   async function sendPasswordReset() {
@@ -263,6 +278,18 @@ export default function AdminRestaurantDetailPage() {
               >
                 <KeyRound className="w-3 h-3" />
                 {resetSent ? 'Reset email sent' : 'Send password reset email'}
+              </button>
+            ) : null
+          } />
+          <Row label="Impersonate" value={
+            data.owner_email ? (
+              <button
+                onClick={impersonate}
+                disabled={impersonating || !data.owner_email}
+                className="flex items-center gap-1.5 text-xs font-medium text-zinc-500 hover:text-amber-600 transition-colors disabled:opacity-50"
+              >
+                <LogIn className="w-3 h-3" />
+                {impersonating ? 'Generating link…' : 'Log in as this user'}
               </button>
             ) : null
           } />

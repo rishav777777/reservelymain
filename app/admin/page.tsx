@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Building2, Calendar, FileText, TrendingUp, Activity, CheckCircle2, Euro } from 'lucide-react'
+import { Building2, Calendar, FileText, TrendingUp, Activity, CheckCircle2, Euro, UserCheck, Zap } from 'lucide-react'
 
 interface Stats {
   total_restaurants:     number
@@ -9,10 +9,14 @@ interface Stats {
   suspended_restaurants: number
   setup_completion_rate: number
   new_this_month:        number
+  deleted_this_month:    number
   reservations_today:    number
   reservations_total:    number
   pending_demo_requests: number
   estimated_mrr:         number
+  trialing_count:        number
+  active_paying_count:   number
+  trial_conversion_rate: number | null
   plans: { plan_tier: string; count: number }[]
 }
 
@@ -43,6 +47,7 @@ export default function AdminOverviewPage() {
 
   const total = stats?.total_restaurants ?? 1
 
+  const convRate = stats?.trial_conversion_rate
   const statCards = [
     {
       label:   'Total restaurants',
@@ -61,12 +66,12 @@ export default function AdminOverviewPage() {
       alert:   false,
     },
     {
-      label:   'Pending demo requests',
-      value:   stats?.pending_demo_requests ?? 0,
-      sub:     'Awaiting follow-up',
-      icon:    FileText,
-      color:   (stats?.pending_demo_requests ?? 0) > 0 ? 'text-amber-500 bg-amber-50' : 'text-zinc-400 bg-zinc-100',
-      alert:   (stats?.pending_demo_requests ?? 0) > 0,
+      label:   'Trial → paid conversion',
+      value:   convRate !== null && convRate !== undefined ? `${convRate}%` : '—',
+      sub:     `${stats?.active_paying_count ?? 0} paying · ${stats?.trialing_count ?? 0} trialing`,
+      icon:    UserCheck,
+      color:   (convRate ?? 0) >= 50 ? 'text-emerald-600 bg-emerald-50' : 'text-amber-500 bg-amber-50',
+      alert:   false,
     },
     {
       label:   'Est. MRR',
@@ -143,6 +148,11 @@ export default function AdminOverviewPage() {
                 good:  (stats?.active_restaurants ?? 0) / (total || 1) >= 0.9,
               },
               {
+                label: 'Trial conversion',
+                value: convRate !== null && convRate !== undefined ? `${convRate}%` : '—',
+                good:  (convRate ?? 0) >= 50,
+              },
+              {
                 label: 'Pending demos',
                 value: String(stats?.pending_demo_requests ?? 0),
                 good:  (stats?.pending_demo_requests ?? 0) === 0,
@@ -168,7 +178,7 @@ export default function AdminOverviewPage() {
           </div>
           <div>
             <p className="text-xs font-semibold text-zinc-900">
-              {stats?.new_this_month ?? 0} new restaurants this month
+              +{stats?.new_this_month ?? 0} new · -{stats?.deleted_this_month ?? 0} deleted this month
             </p>
             <p className="text-xs text-zinc-400">
               {new Date().toLocaleString('en-GB', { month: 'long', year: 'numeric' })}
@@ -181,12 +191,30 @@ export default function AdminOverviewPage() {
           </div>
           <div>
             <p className="text-xs font-semibold text-zinc-900">
-              {(stats?.reservations_total ?? 0).toLocaleString()} total reservations
+              {(stats?.reservations_total ?? 0).toLocaleString()} total · {stats?.reservations_today ?? 0} today
             </p>
-            <p className="text-xs text-zinc-400">All-time across all accounts</p>
+            <p className="text-xs text-zinc-400">Reservations across all accounts</p>
           </div>
         </div>
       </div>
+
+      {/* Pending demos alert */}
+      {(stats?.pending_demo_requests ?? 0) > 0 && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center shrink-0">
+            <FileText className="w-3.5 h-3.5 text-amber-600" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-semibold text-amber-800">
+              {stats?.pending_demo_requests} demo request{(stats?.pending_demo_requests ?? 0) === 1 ? '' : 's'} awaiting review
+            </p>
+            <p className="text-xs text-amber-600">Respond promptly to convert leads</p>
+          </div>
+          <a href="/admin/demo-requests" className="text-xs font-medium text-amber-700 hover:underline shrink-0">
+            View →
+          </a>
+        </div>
+      )}
     </div>
   )
 }

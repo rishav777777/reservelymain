@@ -1,6 +1,7 @@
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { Resend } from 'resend'
 import { NextRequest, NextResponse } from 'next/server'
+import { logEmail } from '@/lib/services/email-logger'
 
 export async function POST(request: NextRequest) {
   const { email } = await request.json() as { email: string }
@@ -28,11 +29,12 @@ export async function POST(request: NextRequest) {
   }
 
   if (process.env.RESEND_API_KEY) {
-    const resend = new Resend(process.env.RESEND_API_KEY)
+    const resend   = new Resend(process.env.RESEND_API_KEY)
+    const subject  = 'Reset your Reservely password'
     await resend.emails.send({
       from:    process.env.RESEND_FROM_EMAIL ?? 'onboarding@resend.dev',
       to:      email.trim(),
-      subject: 'Reset your Reservely password',
+      subject,
       html: `
         <div style="font-family:sans-serif;max-width:480px;margin:0 auto">
           <h2 style="color:#0F172A">Reset your password</h2>
@@ -44,7 +46,7 @@ export async function POST(request: NextRequest) {
           <p style="color:#888;font-size:12px">This link expires in 1 hour. If you didn't request a password reset, ignore this email.</p>
         </div>
       `,
-    }).catch(() => {})
+    }).then(() => logEmail({ type: 'password_reset', to: email.trim(), subject })).catch(() => {})
   }
 
   return NextResponse.json({ ok: true })
