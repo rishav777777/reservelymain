@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { ArrowLeft, CheckCircle2, XCircle, ExternalLink, CreditCard, User, MapPin, Trash2, RotateCcw, AlertTriangle, Building2 } from 'lucide-react'
+import { ArrowLeft, CheckCircle2, XCircle, ExternalLink, CreditCard, User, MapPin, Trash2, RotateCcw, AlertTriangle, Building2, KeyRound } from 'lucide-react'
 import Link from 'next/link'
 
 interface RestaurantDetail {
@@ -69,6 +69,7 @@ export default function AdminRestaurantDetailPage() {
   const [acting,       setActing]       = useState(false)
   const [showDelete,   setShowDelete]   = useState(false)
   const [deleteReason, setDeleteReason] = useState('')
+  const [resetSent,    setResetSent]    = useState(false)
 
   function load() {
     fetch(`/api/admin/restaurants/${id}`)
@@ -113,6 +114,19 @@ export default function AdminRestaurantDetailPage() {
     })
     load()
     setActing(false)
+  }
+
+  async function sendPasswordReset() {
+    if (!data?.owner_email) return
+    setActing(true)
+    await fetch('/api/auth/reset-password', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ email: data.owner_email }),
+    })
+    setResetSent(true)
+    setActing(false)
+    setTimeout(() => setResetSent(false), 4000)
   }
 
   if (loading) {
@@ -239,6 +253,18 @@ export default function AdminRestaurantDetailPage() {
             data.owner_email
               ? <a href={`mailto:${data.owner_email}`} className="text-brand-primary hover:underline">{data.owner_email}</a>
               : null
+          } />
+          <Row label="Password" value={
+            data.owner_email ? (
+              <button
+                onClick={sendPasswordReset}
+                disabled={acting || !data.owner_email}
+                className="flex items-center gap-1.5 text-xs font-medium text-zinc-500 hover:text-brand-primary transition-colors disabled:opacity-50"
+              >
+                <KeyRound className="w-3 h-3" />
+                {resetSent ? 'Reset email sent' : 'Send password reset email'}
+              </button>
+            ) : null
           } />
         </dl>
       </div>
