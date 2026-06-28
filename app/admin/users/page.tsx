@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { Search, ExternalLink } from 'lucide-react'
+import { useEffect, useState, useCallback } from 'react'
+import { Search, ExternalLink, MoreHorizontal, ShieldCheck, UserX, UserCheck, ChevronDown } from 'lucide-react'
 import Link from 'next/link'
 
 interface AdminUser {
@@ -26,13 +26,136 @@ function fmt(d: string) {
   return new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
+async function patchUser(id: string, patch: Record<string, unknown>) {
+  const res = await fetch(`/api/admin/users/${id}`, {
+    method:  'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify(patch),
+  })
+  if (!res.ok) {
+    const json = await res.json() as { error?: string }
+    throw new Error(json.error ?? 'Update failed')
+  }
+}
+
+function ActionsMenu({
+  user,
+  onRefresh,
+}: {
+  user: AdminUser
+  onRefresh: () => void
+}) {
+  const [open,  setOpen]  = useState(false)
+  const [acting, setActing] = useState(false)
+  const [error, setError]  = useState<string | null>(null)
+
+  async function run(patch: Record<string, unknown>) {
+    setActing(true)
+    setError(null)
+    try {
+      await patchUser(user.id, patch)
+      onRefresh()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error')
+    } finally {
+      setActing(false)
+      setOpen(false)
+    }
+  }
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setOpen(o => !o)}
+        disabled={acting}
+        className="p-1 rounded hover:bg-zinc-100 text-zinc-400 hover:text-zinc-600 transition-colors disabled:opacity-40"
+        title="Actions"
+      >
+        <MoreHorizontal size={14} />
+      </button>
+
+      {error && (
+        <p className="absolute right-0 top-7 z-50 text-[10px] text-red-600 bg-red-50 border border-red-200 rounded px-2 py-1 whitespace-nowrap">
+          {error}
+        </p>
+      )}
+
+      {open && (
+        <>
+          {/* Backdrop */}
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <div className="absolute right-0 top-7 z-50 w-52 bg-white border border-zinc-200 rounded-lg shadow-lg overflow-hidden">
+            {/* Suspend / Reactivate */}
+            {user.is_active ? (
+              <button
+                onClick={() => { run({ is_active: false }).catch(() => {}) }}
+                className="w-full flex items-center gap-2 px-3 py-2 text-xs text-red-600 hover:bg-red-50 transition-colors"
+              >
+                <UserX size={12} /> Suspend user
+              </button>
+            ) : (
+              <button
+                onClick={() => { run({ is_active: true }).catch(() => {}) }}
+                className="w-full flex items-center gap-2 px-3 py-2 text-xs text-emerald-600 hover:bg-emerald-50 transition-colors"
+              >
+                <UserCheck size={12} /> Reactivate user
+              </button>
+            )}
+
+            {/* Change role */}
+            <div className="border-t border-zinc-100">
+              <p className="px-3 py-1.5 text-[10px] text-zinc-400 font-semibold uppercase tracking-wider">Change role</p>
+              {(['owner', 'manager', 'staff'] as const).map(r => (
+                <button
+                  key={r}
+                  onClick={() => { run({ role: r }).catch(() => {}) }}
+                  disabled={user.role === r}
+                  className={`w-full flex items-center gap-2 px-3 py-1.5 text-xs transition-colors ${
+                    user.role === r
+                      ? 'text-zinc-300 cursor-default'
+                      : 'text-zinc-600 hover:bg-zinc-50'
+                  }`}
+                >
+                  <ChevronDown size={10} className="opacity-0" />
+                  <span className="capitalize">{r}</span>
+                  {user.role === r && <span className="ml-auto text-[9px] text-zinc-300">current</span>}
+                </button>
+              ))}
+            </div>
+
+            {/* Superadmin */}
+            <div className="border-t border-zinc-100">
+              {user.is_superadmin ? (
+                <button
+                  onClick={() => { run({ is_superadmin: false }).catch(() => {}) }}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-xs text-amber-600 hover:bg-amber-50 transition-colors"
+                >
+                  <ShieldCheck size={12} /> Remove superadmin
+                </button>
+              ) : (
+                <button
+                  onClick={() => { run({ is_superadmin: true }).catch(() => {}) }}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-xs text-amber-700 hover:bg-amber-50 transition-colors"
+                >
+                  <ShieldCheck size={12} /> Promote to superadmin
+                </button>
+              )}
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
 export default function AdminUsersPage() {
   const [users,   setUsers]   = useState<AdminUser[]>([])
   const [loading, setLoading] = useState(true)
   const [search,  setSearch]  = useState('')
   const [role,    setRole]    = useState('')
 
-  useEffect(() => {
+  const load = useCallback(() => {
+    setLoading(true)
     const params = new URLSearchParams()
     if (role) params.set('role', role)
     fetch(`/api/admin/users?${params}`)
@@ -40,6 +163,8 @@ export default function AdminUsersPage() {
       .then(d => { setUsers(d.users ?? []); setLoading(false) })
       .catch(() => setLoading(false))
   }, [role])
+
+  useEffect(() => { load() }, [load])
 
   const filtered = search
     ? users.filter(u => {
@@ -56,7 +181,7 @@ export default function AdminUsersPage() {
   const totalSuspended = users.filter(u => !u.is_active).length
 
   return (
-    <div className="p-6 max-w-4xl space-y-4">
+    <div className="p-6 max-w-5xl space-y-4">
       <div>
         <h1 className="text-sm font-semibold text-zinc-900">Platform Users</h1>
         <p className="text-xs text-zinc-400 mt-0.5">
@@ -90,9 +215,9 @@ export default function AdminUsersPage() {
 
       {/* Table */}
       <div className="bg-white border border-zinc-200 rounded-lg overflow-hidden">
-        <div className="grid grid-cols-[1fr_160px_80px_100px_100px] gap-0 border-b border-zinc-100 px-4 py-2">
-          {['User', 'Restaurant', 'Role', 'Status', 'Joined'].map(h => (
-            <span key={h} className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">{h}</span>
+        <div className="grid grid-cols-[1fr_160px_80px_90px_90px_36px] gap-0 border-b border-zinc-100 px-4 py-2">
+          {['User', 'Restaurant', 'Role', 'Status', 'Joined', ''].map((h, i) => (
+            <span key={i} className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">{h}</span>
           ))}
         </div>
 
@@ -109,10 +234,12 @@ export default function AdminUsersPage() {
             {filtered.map(u => (
               <div
                 key={u.id}
-                className="grid grid-cols-[1fr_160px_80px_100px_100px] gap-0 px-4 py-2.5 hover:bg-zinc-50 transition-colors"
+                className={`grid grid-cols-[1fr_160px_80px_90px_90px_36px] gap-0 px-4 py-2.5 transition-colors ${
+                  u.is_active ? 'hover:bg-zinc-50' : 'bg-red-50/30 hover:bg-red-50/60'
+                }`}
               >
                 {/* User */}
-                <div className="min-w-0">
+                <div className="min-w-0 self-center">
                   <p className="text-xs font-medium text-zinc-900 truncate">
                     {u.full_name ?? '—'}
                     {u.is_superadmin && (
@@ -149,7 +276,9 @@ export default function AdminUsersPage() {
 
                 {/* Status */}
                 <div className="self-center">
-                  <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium ${u.is_active ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-500'}`}>
+                  <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                    u.is_active ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-500'
+                  }`}>
                     {u.is_active ? 'Active' : 'Suspended'}
                   </span>
                 </div>
@@ -157,6 +286,11 @@ export default function AdminUsersPage() {
                 {/* Joined */}
                 <div className="self-center">
                   <span className="text-[11px] text-zinc-400">{fmt(u.created_at)}</span>
+                </div>
+
+                {/* Actions */}
+                <div className="self-center flex justify-end">
+                  <ActionsMenu user={u} onRefresh={load} />
                 </div>
               </div>
             ))}

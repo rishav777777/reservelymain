@@ -1,0 +1,19 @@
+User-agent: *
+
+# Public pages — indexable
+Allow: /
+Allow: /book/
+Allow: /impressum
+Allow: /datenschutz
+Allow: /agb
+
+# App routes — private, no crawling
+Disallow: /dashboard/
+Disallow: /admin/
+Disallow: /dpa/
+Disallow: /api/
+Disallow: /login
+Disallow: /signup
+Disallow: /maintenance
+
+Sitemap: https://reservely.app/sitemap.xml
