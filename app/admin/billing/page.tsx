@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Zap, CreditCard, CheckCircle2, Clock } from 'lucide-react'
+import { CreditCard, CheckCircle2, Clock } from 'lucide-react'
 import Link from 'next/link'
 
 interface Restaurant {
@@ -54,12 +54,13 @@ export default function AdminBillingPage() {
         <p className="text-xs text-zinc-400 mt-0.5">Subscription status across all restaurant accounts</p>
       </div>
 
-      {/* Stripe notice */}
-      <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 flex items-center gap-3">
-        <Zap className="w-4 h-4 text-amber-500 shrink-0" />
-        <p className="text-xs text-amber-800">
-          Stripe integration is Phase 3. All accounts are on free beta access.
-          Billing starts only after payment methods are configured per restaurant.
+      {/* Paddle notice */}
+      <div className="bg-emerald-50 border border-emerald-200 rounded-lg px-4 py-3 flex items-center gap-3">
+        <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+        <p className="text-xs text-emerald-800">
+          Paddle billing is wired up. Webhook at <code className="font-mono bg-emerald-100 px-1 rounded">/api/billing/webhook</code> handles
+          checkout, renewal, payment failure, trial activation, and cancellation.
+          Subscription data here is live — populated automatically via Paddle events.
         </p>
       </div>
 
@@ -151,16 +152,18 @@ export default function AdminBillingPage() {
             )}
           </div>
 
-          {/* Next steps */}
+          {/* Paddle setup checklist */}
           <div className="bg-white border border-zinc-200 rounded-lg p-5 flex items-start gap-3">
             <CreditCard className="w-4 h-4 text-zinc-400 mt-0.5 shrink-0" />
-            <div>
-              <p className="text-xs font-semibold text-zinc-900 mb-1">Phase 3: Stripe integration</p>
-              <p className="text-xs text-zinc-500 leading-relaxed">
-                Connect Stripe, activate subscription plans, and route billing through the
-                /api/billing/checkout and /api/billing/webhook endpoints.
-                Live subscription dates and Stripe customer IDs will populate this table automatically.
-              </p>
+            <div className="space-y-2">
+              <p className="text-xs font-semibold text-zinc-900">Paddle setup checklist (manual steps)</p>
+              <ol className="text-xs text-zinc-500 space-y-1 list-decimal pl-4">
+                <li>Set <code className="font-mono bg-zinc-100 px-1 rounded">PADDLE_API_KEY</code> in Vercel environment variables</li>
+                <li>Set <code className="font-mono bg-zinc-100 px-1 rounded">PADDLE_WEBHOOK_SECRET</code> from Paddle dashboard → Notifications</li>
+                <li>Set <code className="font-mono bg-zinc-100 px-1 rounded">PADDLE_PRICE_STARTER</code>, <code className="font-mono bg-zinc-100 px-1 rounded">PADDLE_PRICE_PRO</code>, <code className="font-mono bg-zinc-100 px-1 rounded">PADDLE_PRICE_GROWTH</code> with your Paddle price IDs</li>
+                <li>Register webhook URL in Paddle dashboard: <code className="font-mono bg-zinc-100 px-1 rounded">https://yourdomain.com/api/billing/webhook</code></li>
+                <li>Subscribe to events: <em>transaction.completed, transaction.payment_succeeded, transaction.payment_failed, subscription.activated, subscription.updated, subscription.cancelled</em></li>
+              </ol>
             </div>
           </div>
         </>

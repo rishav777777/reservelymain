@@ -34,12 +34,15 @@ export async function POST(request: NextRequest) {
 
     // Checkout completed — customer subscribed
     case 'transaction.completed': {
-      const customData = data.custom_data as Record<string, string> | null
+      const customData   = data.custom_data as Record<string, string> | null
       const restaurantId = customData?.restaurant_id
       const customerId   = data.customer_id as string | null
       const subId        = data.subscription_id as string | null
       const items        = data.items as Array<{ price?: { id?: string } }> | null
       const priceId      = items?.[0]?.price?.id ?? null
+      // Capture when this billing period ends (used as subscribed_until)
+      const billingPeriod = (data as Record<string, unknown>).billing_period as Record<string, string> | null
+      const periodEnd     = billingPeriod?.ends_at ?? null
 
       if (!restaurantId || !customerId) break
 
@@ -49,6 +52,7 @@ export async function POST(request: NextRequest) {
         stripe_price_id:        priceId,
         subscription_status:    'active',
         subscription_plan:      priceId ? planFromPriceId(priceId) : null,
+        subscribed_until:       periodEnd,
       }).eq('id', restaurantId)
       break
     }
@@ -114,6 +118,33 @@ export async function POST(request: NextRequest) {
       if (!restaurant) break
 
       await admin.from('restaurants').update({ subscription_status: 'past_due' }).eq('id', restaurant.id)
+      break
+    }
+
+    // Trial converted to paid (Paddle fires this when a trial subscription activates)
+    case 'subscription.activated': {
+      const customerId = data.customer_id as string
+      const subId      = data.id as string
+      const items      = data.items as Array<{ price?: { id?: string } }> | null
+      const priceId    = items?.[0]?.price?.id ?? null
+      const billingPeriod = (data as Record<string, unknown>).current_billing_period as Record<string, string> | null
+      const periodEnd  = billingPeriod?.ends_at ?? null
+
+      const { data: restaurant } = await admin
+        .from('restaurants')
+        .select('id')
+        .eq('stripe_customer_id', customerId)
+        .single()
+      if (!restaurant) break
+
+      await admin.from('restaurants').update({
+        stripe_subscription_id: subId,
+        stripe_price_id:        priceId,
+        subscription_status:    'active',
+        subscription_plan:      priceId ? planFromPriceId(priceId) : null,
+        subscribed_until:       periodEnd,
+        trial_ends_at:          new Date().toISOString(), // trial has ended — stamp it now
+      }).eq('id', restaurant.id)
       break
     }
 

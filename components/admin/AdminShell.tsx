@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, Building2, FileText, CreditCard,
-  Star, Settings, ChevronLeft, Users, ScrollText, Mail,
+  Star, Settings, ChevronLeft, Users, ScrollText, Mail, ShieldAlert,
 } from 'lucide-react'
 import { LanguageToggle } from '@/components/i18n/LanguageToggle'
 
@@ -17,6 +17,7 @@ const NAV = [
   { label: 'Audit Log',     href: '/admin/audit',         icon: ScrollText },
   { label: 'Billing',       href: '/admin/billing',       icon: CreditCard },
   { label: 'Content',       href: '/admin/content',       icon: Star },
+  { label: 'GDPR Erasure',  href: '/admin/gdpr',          icon: ShieldAlert },
   { label: 'Settings',      href: '/admin/settings',      icon: Settings },
 ]
 

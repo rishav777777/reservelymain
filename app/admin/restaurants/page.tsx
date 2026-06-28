@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Search, ChevronRight, CheckCircle2, XCircle, Clock, Trash2, RotateCcw, AlertTriangle } from 'lucide-react'
+import { Search, ChevronRight, CheckCircle2, XCircle, Clock, Trash2, RotateCcw, AlertTriangle, Download } from 'lucide-react'
 
 interface Restaurant {
   id:                  string
@@ -112,14 +112,24 @@ export default function AdminRestaurantsPage() {
           <h1 className="text-sm font-semibold text-zinc-900">Restaurants</h1>
           <p className="text-xs text-zinc-400 mt-0.5">{filtered.length} shown</p>
         </div>
-        <div className="relative">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400" />
-          <input
-            value={query}
-            onChange={e => setQuery(e.target.value)}
-            placeholder="Search by name or slug…"
-            className="text-xs pl-7 pr-3 py-1.5 border border-zinc-200 rounded-md bg-white focus:outline-none focus:ring-1 focus:ring-brand-primary/40 w-56"
-          />
+        <div className="flex items-center gap-2">
+          <a
+            href="/api/admin/export"
+            download
+            className="flex items-center gap-1.5 text-xs border border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-50 rounded-md px-3 py-1.5 transition-colors"
+          >
+            <Download className="w-3 h-3" />
+            Export CSV
+          </a>
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400" />
+            <input
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              placeholder="Search by name or slug…"
+              className="text-xs pl-7 pr-3 py-1.5 border border-zinc-200 rounded-md bg-white focus:outline-none focus:ring-1 focus:ring-brand-primary/40 w-56"
+            />
+          </div>
         </div>
       </div>
 
