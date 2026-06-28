@@ -15,6 +15,7 @@ export async function GET() {
     .select('id, name, slug, description, cuisine_type, city, address, phone, cover_image_url')
     .eq('booking_enabled', true)
     .not('slug', 'is', null)
+    .is('deleted_at', null)
     .order('name')
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })

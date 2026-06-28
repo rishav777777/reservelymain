@@ -67,6 +67,7 @@ export default function AdminRestaurantDetailPage() {
   const [data,         setData]         = useState<RestaurantDetail | null>(null)
   const [loading,      setLoading]      = useState(true)
   const [acting,          setActing]          = useState(false)
+  const [togglingBook,    setTogglingBook]    = useState(false)
   const [showDelete,      setShowDelete]      = useState(false)
   const [deleteReason,    setDeleteReason]    = useState('')
   const [resetSent,       setResetSent]       = useState(false)
@@ -133,6 +134,18 @@ export default function AdminRestaurantDetailPage() {
     setImpReason('')
     if (json.url) window.open(json.url, '_blank')
     else alert(json.error ?? 'Failed to generate link')
+  }
+
+  async function toggleBooking() {
+    if (!data) return
+    setTogglingBook(true)
+    await fetch(`/api/admin/restaurants/${id}`, {
+      method:  'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ booking_enabled: !data.booking_enabled }),
+    })
+    setData(prev => prev ? { ...prev, booking_enabled: !prev.booking_enabled } : prev)
+    setTogglingBook(false)
   }
 
   async function sendPasswordReset() {
@@ -316,7 +329,19 @@ export default function AdminRestaurantDetailPage() {
           <Row label="Address" value={data.address} />
           <Row label="Timezone"       value={data.timezone} />
           <Row label="Max party size" value={data.max_party_size ? String(data.max_party_size) : null} />
-          <Row label="Booking enabled" value={data.booking_enabled ? 'Yes' : 'No'} />
+          <Row label="Booking enabled" value={
+            <button
+              onClick={toggleBooking}
+              disabled={togglingBook || isDeleted}
+              className={`flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full border transition-colors disabled:opacity-50 ${
+                data.booking_enabled
+                  ? 'bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-red-50 hover:border-red-200 hover:text-red-600'
+                  : 'bg-zinc-50 border-zinc-200 text-zinc-500 hover:bg-emerald-50 hover:border-emerald-200 hover:text-emerald-700'
+              }`}
+            >
+              {togglingBook ? '…' : data.booking_enabled ? '✓ Enabled — click to disable' : '✗ Disabled — click to enable'}
+            </button>
+          } />
           <Row label="Setup complete"  value={data.setup_completed ? 'Yes' : 'No'} />
         </dl>
       </div>

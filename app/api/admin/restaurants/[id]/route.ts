@@ -49,7 +49,7 @@ export async function PATCH(
   if (!user) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const { id }    = await params
-  const body      = await req.json() as { owner_active?: boolean; reactivate?: boolean }
+  const body      = await req.json() as { owner_active?: boolean; reactivate?: boolean; booking_enabled?: boolean }
   const admin     = getAdminClient()
 
   if (body.reactivate) {
@@ -73,6 +73,14 @@ export async function PATCH(
       .from('profiles')
       .update({ is_active: body.owner_active })
       .eq('restaurant_id', id)
+    return NextResponse.json({ ok: true })
+  }
+
+  if (typeof body.booking_enabled === 'boolean') {
+    await admin
+      .from('restaurants')
+      .update({ booking_enabled: body.booking_enabled })
+      .eq('id', id)
     return NextResponse.json({ ok: true })
   }
 

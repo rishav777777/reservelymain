@@ -60,6 +60,19 @@ export async function PATCH(
           .from('profiles')
           .update({ is_active: true })
           .eq('id', applicantProfile.id)
+
+        // Also enable booking on their restaurant so it appears in the public directory
+        const { data: ownerProfile } = await admin
+          .from('profiles')
+          .select('restaurant_id')
+          .eq('id', applicantProfile.id)
+          .single()
+        if (ownerProfile?.restaurant_id) {
+          await admin
+            .from('restaurants')
+            .update({ booking_enabled: true })
+            .eq('id', ownerProfile.restaurant_id)
+        }
       } else {
         // Fallback for requests submitted before the new signup flow:
         // create a restaurant record and send an invitation link
