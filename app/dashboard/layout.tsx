@@ -40,9 +40,14 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   const { data: restaurant } = await supabase
     .from('restaurants')
-    .select('name, owner_whatsapp')
+    .select('name, owner_whatsapp, dpa_signed_at')
     .eq('id', profile?.restaurant_id ?? '')
     .single()
+
+  // Owners must sign the DPA before accessing the dashboard (GDPR Art. 28)
+  if (profile?.role === 'owner' && !profile?.is_superadmin && !restaurant?.dpa_signed_at) {
+    redirect('/dpa')
+  }
 
   const userRole = (profile?.role ?? 'staff') as UserRole
 
