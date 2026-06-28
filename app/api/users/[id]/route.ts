@@ -46,9 +46,15 @@ export async function PATCH(
     }
 
     if (action === 'toggle_active') {
+      // Ownership check FIRST — must happen before any Auth API call
       const { data: targetProfile } = await admin
-        .from('profiles').select('is_active').eq('id', targetId).single()
-      const newActive = !(targetProfile?.is_active ?? true)
+        .from('profiles').select('is_active, restaurant_id').eq('id', targetId).single()
+
+      if (!targetProfile || targetProfile.restaurant_id !== profile.restaurant_id) {
+        return NextResponse.json({ error: 'User not found in your restaurant' }, { status: 404 })
+      }
+
+      const newActive = !targetProfile.is_active
 
       const { error: banError } = await admin.auth.admin.updateUserById(targetId, {
         ban_duration: newActive ? 'none' : '876000h',

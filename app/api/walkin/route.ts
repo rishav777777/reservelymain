@@ -62,7 +62,9 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  const refCode = 'WLK-' + Math.random().toString(36).toUpperCase().slice(2, 8)
+  const refBytes = new Uint8Array(4)
+  crypto.getRandomValues(refBytes)
+  const refCode = 'WLK-' + Array.from(refBytes).map(b => b.toString(36).toUpperCase().padStart(2, '0')).join('').slice(0, 6)
 
   const { data: reservation, error } = await supabase
     .from('reservations')

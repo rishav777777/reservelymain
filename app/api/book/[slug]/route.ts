@@ -94,6 +94,12 @@ export async function POST(
   if (party_size < 1 || party_size > 500) {
     return NextResponse.json({ error: 'Invalid party size' }, { status: 422 })
   }
+  if (notes && notes.length > 2000) {
+    return NextResponse.json({ error: 'Notes must be 2000 characters or fewer' }, { status: 422 })
+  }
+  if (menu_preference && menu_preference.length > 500) {
+    return NextResponse.json({ error: 'Menu preference must be 500 characters or fewer' }, { status: 422 })
+  }
 
   const admin = createAdminClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

@@ -48,6 +48,20 @@ export const checkoutLimiter = new Ratelimit({
   prefix: 'rl:checkout',
 })
 
+// 5 cancellation attempts per IP per 10 min — prevents brute-force of reference_code+email
+export const cancelLimiter = new Ratelimit({
+  redis,
+  limiter: Ratelimit.slidingWindow(5, '10 m'),
+  prefix: 'rl:cancel',
+})
+
+// 10 reservation lookups per IP per 10 min — prevents reference code enumeration on manage route
+export const manageLookupLimiter = new Ratelimit({
+  redis,
+  limiter: Ratelimit.slidingWindow(10, '10 m'),
+  prefix: 'rl:manage',
+})
+
 // Returns the client IP from a Next.js request
 export function getClientIp(request: Request): string {
   return (

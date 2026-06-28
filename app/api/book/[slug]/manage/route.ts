@@ -1,6 +1,6 @@
 import { createClient as createSupabaseAdmin } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
-import { resourceLimiter, getClientIp } from '@/lib/ratelimit'
+import { resourceLimiter, manageLookupLimiter, getClientIp } from '@/lib/ratelimit'
 
 interface Ctx {
   params: Promise<{ slug: string }>
@@ -9,6 +9,11 @@ interface Ctx {
 // GET /api/book/[slug]/manage?ref=RSV-XXXXXXXX
 // Returns reservation details for the guest self-service portal.
 export async function GET(request: NextRequest, { params }: Ctx) {
+  const { success } = await manageLookupLimiter.limit(getClientIp(request)).catch(() => ({ success: true }))
+  if (!success) {
+    return NextResponse.json({ error: 'Too many requests. Please try again later.' }, { status: 429 })
+  }
+
   const { slug } = await params
   const ref = request.nextUrl.searchParams.get('ref')?.toUpperCase()
 

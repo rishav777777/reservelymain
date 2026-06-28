@@ -1,4 +1,5 @@
 import { createClient as createAdminClient } from '@supabase/supabase-js'
+import { cancelLimiter, getClientIp } from '@/lib/ratelimit'
 import { NextRequest, NextResponse } from 'next/server'
 
 // ─── POST /api/reservations/[id]/cancel ───────────────────────────────────────
@@ -10,6 +11,11 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const { success } = await cancelLimiter.limit(getClientIp(request)).catch(() => ({ success: true }))
+  if (!success) {
+    return NextResponse.json({ error: 'Too many attempts. Please try again later.' }, { status: 429 })
+  }
+
   const { id } = await params
   const body = await request.json()
   const { reference_code, email } = body as { reference_code?: string; email?: string }

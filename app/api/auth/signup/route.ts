@@ -4,6 +4,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { logEmail } from '@/lib/services/email-logger'
 import { signupLimiter, getClientIp } from '@/lib/ratelimit'
 
+function esc(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+}
+
 function slugify(name: string): string {
   return name
     .toLowerCase()
@@ -128,14 +132,14 @@ export async function POST(request: NextRequest) {
             <div style="font-family:sans-serif;max-width:480px">
               <h2 style="color:#0F172A">New signup requires review</h2>
               <table style="width:100%;font-size:14px">
-                <tr><td style="color:#64748B;padding:4px 0">Restaurant</td><td><strong>${restaurantName}</strong></td></tr>
-                <tr><td style="color:#64748B;padding:4px 0">Contact</td><td>${fullName}</td></tr>
-                <tr><td style="color:#64748B;padding:4px 0">Email</td><td>${email}</td></tr>
-                <tr><td style="color:#64748B;padding:4px 0">Phone</td><td>${phone ?? '—'}</td></tr>
-                <tr><td style="color:#64748B;padding:4px 0">City</td><td>${city ?? '—'}</td></tr>
-                <tr><td style="color:#64748B;padding:4px 0">Venue type</td><td>${venueType ?? '—'}</td></tr>
+                <tr><td style="color:#64748B;padding:4px 0">Restaurant</td><td><strong>${esc(restaurantName)}</strong></td></tr>
+                <tr><td style="color:#64748B;padding:4px 0">Contact</td><td>${esc(fullName)}</td></tr>
+                <tr><td style="color:#64748B;padding:4px 0">Email</td><td>${esc(email)}</td></tr>
+                <tr><td style="color:#64748B;padding:4px 0">Phone</td><td>${esc(phone ?? '—')}</td></tr>
+                <tr><td style="color:#64748B;padding:4px 0">City</td><td>${esc(city ?? '—')}</td></tr>
+                <tr><td style="color:#64748B;padding:4px 0">Venue type</td><td>${esc(venueType ?? '—')}</td></tr>
               </table>
-              ${message ? `<p style="margin-top:16px;color:#444">${message}</p>` : ''}
+              ${message ? `<p style="margin-top:16px;color:#444">${esc(message)}</p>` : ''}
               <p style="margin-top:20px">
                 <a href="${process.env.NEXT_PUBLIC_APP_URL ?? ''}/admin/demo-requests"
                    style="background:#0D472B;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;font-size:14px">
@@ -155,9 +159,9 @@ export async function POST(request: NextRequest) {
         subject: applicantSubject,
         html: `
           <div style="font-family:sans-serif;max-width:480px">
-            <h2 style="color:#0F172A">Thanks for signing up, ${fullName.split(' ')[0]}!</h2>
+            <h2 style="color:#0F172A">Thanks for signing up, ${esc(fullName.split(' ')[0])}!</h2>
             <p style="color:#444;font-size:14px;line-height:1.6">
-              We've received your application for <strong>${restaurantName}</strong>.
+              We've received your application for <strong>${esc(restaurantName)}</strong>.
               Our team will review it and activate your account within 24 hours.
             </p>
             <p style="color:#444;font-size:14px;line-height:1.6">

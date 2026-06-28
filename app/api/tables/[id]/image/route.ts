@@ -22,6 +22,21 @@ export async function POST(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
+    // Verify table belongs to this restaurant before any storage operation
+    const adminClientEarly = createAdminClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
+    const { data: tableOwnership } = await adminClientEarly
+      .from('restaurant_tables')
+      .select('id')
+      .eq('id', tableId)
+      .eq('restaurant_id', profile.restaurant_id)
+      .single()
+    if (!tableOwnership) {
+      return NextResponse.json({ error: 'Table not found' }, { status: 404 })
+    }
+
     try {
       const { success, limit, remaining } = await resourceLimiter.limit(
         `img:${profile.restaurant_id}`
@@ -143,7 +158,7 @@ export async function DELETE(
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const { data: profile } = await supabase
-      .from('profiles').select('role').eq('id', user.id).single()
+      .from('profiles').select('restaurant_id, role').eq('id', user.id).single()
     if (!profile || profile.role === 'staff') {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
@@ -165,13 +180,19 @@ export async function DELETE(
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     )
 
-    const { data: tableRow } = await adminClient
+    // Verify ownership before touching storage — admin client bypasses RLS
+    const { data: ownedTable } = await adminClient
       .from('restaurant_tables')
       .select('image_urls')
       .eq('id', tableId)
+      .eq('restaurant_id', profile.restaurant_id)
       .single()
 
-    const currentUrls: string[] = tableRow?.image_urls ?? []
+    if (!ownedTable) {
+      return NextResponse.json({ error: 'Table not found' }, { status: 404 })
+    }
+
+    const currentUrls: string[] = ownedTable.image_urls ?? []
     const updatedUrls = currentUrls.filter((u) => u !== urlToRemove)
 
     const { error: dbError } = await adminClient

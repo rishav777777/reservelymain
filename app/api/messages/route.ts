@@ -14,7 +14,19 @@ export async function GET(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  // RLS ensures only messages belonging to this user's restaurant are returned
+  const { data: profile } = await supabase
+    .from('profiles').select('restaurant_id').eq('id', user.id).single()
+  if (!profile?.restaurant_id) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
+  // Verify the reservation belongs to this restaurant before fetching messages
+  const { data: resCheck } = await supabase
+    .from('reservations')
+    .select('id')
+    .eq('id', reservationId)
+    .eq('restaurant_id', profile.restaurant_id)
+    .single()
+  if (!resCheck) return NextResponse.json({ error: 'Reservation not found' }, { status: 404 })
+
   const { data, error } = await supabase
     .from('messages')
     .select('*')
@@ -46,6 +58,19 @@ export async function POST(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { data: profile } = await supabase
+    .from('profiles').select('restaurant_id').eq('id', user.id).single()
+  if (!profile?.restaurant_id) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
+  // Verify reservation belongs to this restaurant before inserting a message
+  const { data: resCheck } = await supabase
+    .from('reservations')
+    .select('id')
+    .eq('id', reservation_id)
+    .eq('restaurant_id', profile.restaurant_id)
+    .single()
+  if (!resCheck) return NextResponse.json({ error: 'Reservation not found' }, { status: 404 })
 
   const { data, error } = await supabase
     .from('messages')
