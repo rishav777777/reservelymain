@@ -25,13 +25,12 @@ export async function proxy(request: NextRequest) {
   // are silently renewed and never expire mid-session.
   const { data: { user } } = await supabase.auth.getUser()
 
-  if (!user && request.nextUrl.pathname.startsWith('/dashboard')) {
-    return NextResponse.redirect(new URL('/login', request.url))
-  }
+  const { pathname } = request.nextUrl
+  const PROTECTED = ['/dashboard', '/admin', '/dpa']
 
-  if (!user && request.nextUrl.pathname.startsWith('/admin')) {
+  if (!user && PROTECTED.some(p => pathname.startsWith(p))) {
     const loginUrl = new URL('/login', request.url)
-    loginUrl.searchParams.set('next', request.nextUrl.pathname)
+    loginUrl.searchParams.set('next', pathname)
     return NextResponse.redirect(loginUrl)
   }
 
@@ -39,5 +38,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/dashboard/:path*', '/admin/:path*'],
+  matcher: ['/dashboard/:path*', '/admin/:path*', '/dpa/:path*'],
 }
