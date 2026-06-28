@@ -2,8 +2,15 @@ import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { Resend } from 'resend'
 import { NextRequest, NextResponse } from 'next/server'
 import { logEmail } from '@/lib/services/email-logger'
+import { passwordResetLimiter, getClientIp } from '@/lib/ratelimit'
 
 export async function POST(request: NextRequest) {
+  const ip = getClientIp(request)
+  const { success } = await passwordResetLimiter.limit(ip).catch(() => ({ success: true }))
+  if (!success) {
+    return NextResponse.json({ ok: true }) // silent 200 — don't confirm rate limit to attacker
+  }
+
   const { email } = await request.json() as { email: string }
 
   if (!email?.trim()) {

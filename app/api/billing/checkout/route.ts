@@ -1,11 +1,18 @@
 import { createClient } from '@/lib/supabase/server'
 import { createCheckoutUrl, PRICE_IDS } from '@/lib/services/paddle'
+import { checkoutLimiter } from '@/lib/ratelimit'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  // Rate limit by user ID so limits apply per account, not per IP
+  const { success } = await checkoutLimiter.limit(user.id).catch(() => ({ success: true }))
+  if (!success) {
+    return NextResponse.json({ error: 'Too many checkout attempts. Please wait and try again.' }, { status: 429 })
+  }
 
   const { data: profile } = await supabase
     .from('profiles')

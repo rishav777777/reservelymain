@@ -2,6 +2,7 @@ import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { Resend } from 'resend'
 import { NextRequest, NextResponse } from 'next/server'
 import { logEmail } from '@/lib/services/email-logger'
+import { signupLimiter, getClientIp } from '@/lib/ratelimit'
 
 function slugify(name: string): string {
   return name
@@ -15,6 +16,15 @@ function slugify(name: string): string {
 
 export async function POST(request: NextRequest) {
   try {
+    const ip = getClientIp(request)
+    const { success } = await signupLimiter.limit(ip).catch(() => ({ success: true }))
+    if (!success) {
+      return NextResponse.json(
+        { error: 'Too many signup attempts. Please try again later.' },
+        { status: 429 }
+      )
+    }
+
     const { fullName, restaurantName, email, password, phone, city, venueType, message } =
       await request.json() as {
         fullName: string

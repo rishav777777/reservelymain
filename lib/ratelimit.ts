@@ -27,6 +27,27 @@ export const holdLimiter = new Ratelimit({
   prefix: 'rl:hold',
 })
 
+// 3 signups per IP per hour — prevents spam account creation
+export const signupLimiter = new Ratelimit({
+  redis,
+  limiter: Ratelimit.slidingWindow(3, '1 h'),
+  prefix: 'rl:signup',
+})
+
+// 5 password reset requests per IP per hour — prevents email enumeration abuse
+export const passwordResetLimiter = new Ratelimit({
+  redis,
+  limiter: Ratelimit.slidingWindow(5, '1 h'),
+  prefix: 'rl:pwreset',
+})
+
+// 5 checkout URL generations per user per hour — prevents Paddle URL spam
+export const checkoutLimiter = new Ratelimit({
+  redis,
+  limiter: Ratelimit.slidingWindow(5, '1 h'),
+  prefix: 'rl:checkout',
+})
+
 // Returns the client IP from a Next.js request
 export function getClientIp(request: Request): string {
   return (
