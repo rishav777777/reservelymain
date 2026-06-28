@@ -3,8 +3,17 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { BookingClient } from '@/components/booking/BookingClient'
 
+export const runtime = 'edge'
+
 interface Props {
   params: Promise<{ slug: string }>
+}
+
+type OpeningHourRow = {
+  day_of_week:  number
+  is_open:      boolean
+  open_time:    string
+  last_booking: string | null
 }
 
 export default async function BookSlugPage({ params }: Props) {
@@ -15,33 +24,15 @@ export default async function BookSlugPage({ params }: Props) {
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   )
 
-  type Restaurant = {
-    id: string
-    name: string
-    booking_enabled: boolean
-    advance_booking_days: number | null
-    max_party_size: number | null
-    default_duration_minutes?: number | null
-  }
-
-  const { data: r1, error: e1 } = await admin
+  // One round trip: restaurant + opening hours in a single nested query
+  const { data: restaurant } = await admin
     .from('restaurants')
-    .select('id, name, booking_enabled, advance_booking_days, max_party_size, default_duration_minutes')
+    .select(`
+      id, name, booking_enabled, advance_booking_days, max_party_size, default_duration_minutes,
+      opening_hours(day_of_week, is_open, open_time, last_booking)
+    `)
     .eq('slug', slug)
     .single()
-
-  let restaurant: Restaurant | null
-  if (e1?.message?.toLowerCase().includes('does not exist')) {
-    // default_duration_minutes column not yet added — fall back to base columns
-    const { data: r2 } = await admin
-      .from('restaurants')
-      .select('id, name, booking_enabled, advance_booking_days, max_party_size')
-      .eq('slug', slug)
-      .single()
-    restaurant = r2 as Restaurant | null
-  } else {
-    restaurant = r1 as Restaurant | null
-  }
 
   if (!restaurant) notFound()
 
@@ -78,29 +69,21 @@ export default async function BookSlugPage({ params }: Props) {
     )
   }
 
-  // Fetch opening hours scoped to this restaurant (admin bypasses RLS — must filter explicitly)
-  const { data: openingHours } = await admin
-    .from('opening_hours')
-    .select('day_of_week, is_open, open_time, last_booking')
-    .eq('restaurant_id', restaurant.id)
-    .order('day_of_week')
+  const rawHours = (restaurant.opening_hours ?? []) as OpeningHourRow[]
 
   // closed_days: set of getDow-compatible indices (0=Mon … 6=Sun)
   // DB: day_of_week uses 0=Sun … 6=Sat → convert: (db + 6) % 7
   const closedDays = new Set<number>(
-    (openingHours ?? [])
-      .filter((h) => !h.is_open)
-      .map((h) => (h.day_of_week + 6) % 7)
+    rawHours.filter(h => !h.is_open).map(h => (h.day_of_week + 6) % 7)
   )
 
-  // Map getDow index → {open, last} for dynamic time slot generation in Screen1
   const openingHoursMap: Record<number, { open: string; last: string | null }> = {}
-  for (const h of openingHours ?? []) {
+  for (const h of rawHours) {
     if (!h.is_open) continue
     const dow = (h.day_of_week + 6) % 7
     openingHoursMap[dow] = {
-      open: (h.open_time as string).slice(0, 5),
-      last: h.last_booking ? (h.last_booking as string).slice(0, 5) : null,
+      open: h.open_time.slice(0, 5),
+      last: h.last_booking ? h.last_booking.slice(0, 5) : null,
     }
   }
 

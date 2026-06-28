@@ -1,6 +1,8 @@
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
 
+export const runtime = 'edge'
+
 // GET /api/reservations/tables?date=YYYY-MM-DD&time=HH:MM&duration=90&restaurantId=xxx
 //
 // Public endpoint called by the guest booking portal (Screen2) to check live
