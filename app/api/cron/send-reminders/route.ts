@@ -29,17 +29,19 @@ export async function GET(request: NextRequest) {
     .eq('status', 'confirmed')
     .eq('reminder_24h_sent', false)
 
+  // Batch-fetch restaurant names to avoid N+1 queries
+  const restaurantIds24h = [...new Set((upcoming24h ?? []).map(r => r.restaurant_id as string))]
+  const { data: restaurants24h } = restaurantIds24h.length
+    ? await admin.from('restaurants').select('id, name').in('id', restaurantIds24h)
+    : { data: [] }
+  const restaurantMap24h = Object.fromEntries((restaurants24h ?? []).map(r => [r.id, r.name as string]))
+
   let sent24h = 0
   for (const r of upcoming24h ?? []) {
-    const { data: restaurant } = await admin
-      .from('restaurants')
-      .select('name')
-      .eq('id', r.restaurant_id)
-      .single()
+    const restaurantName = restaurantMap24h[r.restaurant_id]
+    if (!restaurantName) continue
 
-    if (!restaurant) continue
-
-    await sendReminderEmail(r, restaurant.name, '24h').catch(() => {})
+    await sendReminderEmail(r, restaurantName, '24h').catch(() => {})
 
     await admin
       .from('reservations')
@@ -69,17 +71,19 @@ export async function GET(request: NextRequest) {
     .gte('reservation_time', windowStartTime)
     .lte('reservation_time', windowEndTime)
 
+  // Batch-fetch restaurant names to avoid N+1 queries
+  const restaurantIds2h = [...new Set((upcoming2h ?? []).map(r => r.restaurant_id as string))]
+  const { data: restaurants2h } = restaurantIds2h.length
+    ? await admin.from('restaurants').select('id, name').in('id', restaurantIds2h)
+    : { data: [] }
+  const restaurantMap2h = Object.fromEntries((restaurants2h ?? []).map(r => [r.id, r.name as string]))
+
   let sent2h = 0
   for (const r of upcoming2h ?? []) {
-    const { data: restaurant } = await admin
-      .from('restaurants')
-      .select('name')
-      .eq('id', r.restaurant_id)
-      .single()
+    const restaurantName = restaurantMap2h[r.restaurant_id]
+    if (!restaurantName) continue
 
-    if (!restaurant) continue
-
-    await sendReminderEmail(r, restaurant.name, '2h').catch(() => {})
+    await sendReminderEmail(r, restaurantName, '2h').catch(() => {})
 
     await admin
       .from('reservations')

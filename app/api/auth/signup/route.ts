@@ -3,6 +3,7 @@ import { Resend } from 'resend'
 import { NextRequest, NextResponse } from 'next/server'
 import { logEmail } from '@/lib/services/email-logger'
 import { signupLimiter, getClientIp } from '@/lib/ratelimit'
+import zxcvbn from 'zxcvbn'
 
 function esc(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
@@ -46,6 +47,11 @@ export async function POST(request: NextRequest) {
     }
     if (password.length < 8) {
       return NextResponse.json({ error: 'Password must be at least 8 characters' }, { status: 400 })
+    }
+    const strength = zxcvbn(password, [email?.trim(), fullName?.trim(), restaurantName?.trim()].filter(Boolean))
+    if (strength.score < 2) {
+      const hint = strength.feedback.suggestions[0] ?? 'Use a mix of letters, numbers, and symbols.'
+      return NextResponse.json({ error: `Password is too weak. ${hint}` }, { status: 400 })
     }
 
     const admin = createAdminClient(

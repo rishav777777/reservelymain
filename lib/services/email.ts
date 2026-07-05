@@ -19,12 +19,15 @@ function formatTime(time: string): string {
   return `${h.padStart(2, '0')}:${m}`
 }
 
-export async function sendConfirmationEmail(reservation: Reservation, restaurantName: string) {
+export async function sendConfirmationEmail(reservation: Reservation, restaurantName: string, restaurantSlug?: string) {
   const resend = new Resend(process.env.RESEND_API_KEY)
   const tableLabel = reservation.restaurant_tables?.name
     ? ` — ${reservation.restaurant_tables.name}`
     : ''
   const subject = `Reservation confirmed at ${restaurantName} (${reservation.reference_code})`
+  const manageUrl = restaurantSlug
+    ? `${APP_URL}/book/${restaurantSlug}/manage?ref=${reservation.reference_code}&email=${encodeURIComponent(reservation.guest_email)}`
+    : null
 
   try {
     await resend.emails.send({
@@ -43,6 +46,7 @@ export async function sendConfirmationEmail(reservation: Reservation, restaurant
             ${tableLabel ? `<tr><td style="padding:8px 0;color:#666">Table</td><td style="padding:8px 0;font-weight:500">${reservation.restaurant_tables?.name}</td></tr>` : ''}
           </table>
           ${reservation.special_requests ? `<p style="background:#f9f9f9;padding:12px;border-radius:6px;font-size:14px;color:#444">Special requests: ${reservation.special_requests}</p>` : ''}
+          ${manageUrl ? `<p style="margin-top:24px"><a href="${manageUrl}" style="color:#E63946;font-size:14px;text-decoration:underline">Manage or cancel this booking</a></p>` : ''}
           <p style="font-size:13px;color:#999;margin-top:32px">Powered by <a href="${APP_URL}" style="color:#E63946;text-decoration:none">Reservely</a></p>
         </div>
       `,

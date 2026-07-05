@@ -4,6 +4,10 @@ import { Resend } from 'resend'
 import { NextRequest, NextResponse } from 'next/server'
 import { logEmail } from '@/lib/services/email-logger'
 
+function esc(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+}
+
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -108,8 +112,8 @@ export async function PATCH(
             <div style="font-family:sans-serif;max-width:480px">
               <h2 style="color:#0D472B">You're approved!</h2>
               <p style="color:#444;font-size:14px;line-height:1.6">
-                Hi ${updatedRequest.contact_name?.split(' ')[0] ?? 'there'},<br><br>
-                Great news — your application for <strong>${updatedRequest.restaurant_name}</strong>
+                Hi ${esc(updatedRequest.contact_name?.split(' ')[0] ?? 'there')},<br><br>
+                Great news — your application for <strong>${esc(updatedRequest.restaurant_name)}</strong>
                 has been approved. Your account is now active.
               </p>
               <p style="margin-top:20px">
@@ -138,9 +142,9 @@ export async function PATCH(
             <div style="font-family:sans-serif;max-width:480px">
               <h2 style="color:#0F172A">Application update</h2>
               <p style="color:#444;font-size:14px;line-height:1.6">
-                Hi ${updatedRequest.contact_name?.split(' ')[0] ?? 'there'},<br><br>
+                Hi ${esc(updatedRequest.contact_name?.split(' ')[0] ?? 'there')},<br><br>
                 Thank you for your interest in Reservely. Unfortunately, we're unable to
-                approve your application for <strong>${updatedRequest.restaurant_name}</strong>
+                approve your application for <strong>${esc(updatedRequest.restaurant_name)}</strong>
                 at this time.
               </p>
               <p style="color:#444;font-size:14px;line-height:1.6">

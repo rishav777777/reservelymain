@@ -58,6 +58,20 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
+  for (const h of hours) {
+    if (!h.is_open) continue
+    const { open_time, close_time, last_booking } = h
+    if (open_time && close_time && open_time >= close_time) {
+      return NextResponse.json({ error: `Day ${h.day_of_week}: opening time must be before closing time` }, { status: 400 })
+    }
+    if (close_time && last_booking && last_booking > close_time) {
+      return NextResponse.json({ error: `Day ${h.day_of_week}: last booking time must not be after closing time` }, { status: 400 })
+    }
+    if (open_time && last_booking && last_booking <= open_time) {
+      return NextResponse.json({ error: `Day ${h.day_of_week}: last booking time must be after opening time` }, { status: 400 })
+    }
+  }
+
   const rows = hours.map((h: {
     day_of_week: number
     is_open: boolean

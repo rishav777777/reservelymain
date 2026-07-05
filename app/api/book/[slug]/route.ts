@@ -201,7 +201,7 @@ export async function POST(
   }
 
   if (process.env.RESEND_API_KEY) {
-    sendConfirmationEmail(reservation as never, restaurant.name).catch(() => {})
+    sendConfirmationEmail(reservation as never, restaurant.name, slug).catch(() => {})
   }
 
   return NextResponse.json(
