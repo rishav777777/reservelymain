@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { allocateTable, getOverlappingTableIds } from '@/lib/table-allocator'
-import { sendConfirmationEmail, sendRejectionEmail } from '@/lib/services/email'
+import { sendConfirmationEmail, sendRejectionEmail, sendNoShowEmail } from '@/lib/services/email'
 import { logAction } from '@/lib/audit'
 import { NextRequest, NextResponse } from 'next/server'
 import { ReservationStatus } from '@/types'
@@ -195,7 +195,7 @@ export async function PATCH(
   }
 
   // Fire-and-forget email
-  if (status === 'confirmed' || status === 'rejected') {
+  if (status === 'confirmed' || status === 'rejected' || status === 'no_show') {
     const { data: restaurant } = await supabase
       .from('restaurants')
       .select('name, slug')
@@ -204,8 +204,10 @@ export async function PATCH(
     const restaurantName = restaurant?.name ?? 'The Restaurant'
     if (status === 'confirmed') {
       sendConfirmationEmail(data, restaurantName, restaurant?.slug ?? undefined).catch(() => {})
-    } else {
+    } else if (status === 'rejected') {
       sendRejectionEmail(data, restaurantName).catch(() => {})
+    } else {
+      sendNoShowEmail(data, restaurantName, restaurant?.slug ?? undefined).catch(() => {})
     }
   }
 

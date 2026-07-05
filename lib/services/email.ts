@@ -94,6 +94,39 @@ export async function sendReminderEmail(
   }
 }
 
+export async function sendNoShowEmail(reservation: Reservation, restaurantName: string, restaurantSlug?: string) {
+  const resend = new Resend(process.env.RESEND_API_KEY)
+  const subject = `We missed you at ${restaurantName} — book again anytime`
+  const bookUrl = restaurantSlug ? `${APP_URL}/book/${restaurantSlug}` : null
+
+  try {
+    await resend.emails.send({
+      from: FROM,
+      to: reservation.guest_email,
+      subject,
+      html: `
+        <div style="font-family:sans-serif;max-width:520px;margin:0 auto;color:#111">
+          <h2 style="font-size:18px;margin-bottom:4px">We missed you!</h2>
+          <p style="color:#666;margin-top:0">
+            Hi ${reservation.guest_name.split(' ')[0]}, we had a table reserved for you at
+            <strong>${restaurantName}</strong> on <strong>${formatDate(reservation.reservation_date)}</strong>
+            at <strong>${formatTime(reservation.reservation_time)}</strong> but you didn't make it.
+          </p>
+          <p style="color:#444;line-height:1.6">
+            No worries — things happen. Whenever you're ready to visit us again, you can book directly:
+          </p>
+          ${bookUrl ? `<p style="margin-top:20px"><a href="${bookUrl}" style="background:#0D472B;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;font-size:14px;font-weight:600">Book a table →</a></p>` : ''}
+          <p style="font-size:13px;color:#999;margin-top:32px">Powered by <a href="${APP_URL}" style="color:#E63946;text-decoration:none">Reservely</a></p>
+        </div>
+      `,
+    })
+    logEmail({ type: 'reservation_no_show', to: reservation.guest_email, subject, restaurantId: reservation.restaurant_id }).catch(() => {})
+  } catch (e) {
+    logEmail({ type: 'reservation_no_show', to: reservation.guest_email, subject, restaurantId: reservation.restaurant_id, status: 'failed', error: String(e) }).catch(() => {})
+    throw e
+  }
+}
+
 export async function sendRejectionEmail(reservation: Reservation, restaurantName: string) {
   const resend = new Resend(process.env.RESEND_API_KEY)
   const subject = `Reservation update from ${restaurantName} (${reservation.reference_code})`

@@ -232,6 +232,7 @@ export default function HomePage() {
   const [query, setQuery]             = useState('')
   const [restaurants, setRestaurants] = useState<PublicRestaurant[]>([])
   const [loading, setLoading]         = useState(true)
+  const [liveStats, setLiveStats]     = useState<{ bookings: number; restaurants: number } | null>(null)
 
   useReveal()
 
@@ -241,6 +242,13 @@ export default function HomePage() {
       .then(d => setRestaurants(Array.isArray(d) ? d : []))
       .catch(() => {})
       .finally(() => setLoading(false))
+  }, [])
+
+  useEffect(() => {
+    fetch('/api/stats')
+      .then(r => r.json())
+      .then(d => { if (typeof d?.bookings === 'number') setLiveStats(d) })
+      .catch(() => {})
   }, [])
 
   function handleSearch(e: React.FormEvent<HTMLFormElement>) {
@@ -395,7 +403,9 @@ export default function HomePage() {
         <div className="max-w-5xl mx-auto px-6 py-6 grid grid-cols-2 sm:grid-cols-4 gap-4">
           {tx.stats.map((stat, i) => {
             const Icon = STAT_ICONS[i]
-            const num  = STAT_NUMS[i]
+            const num  = i === 0 ? (liveStats?.bookings    ?? STAT_NUMS[0])
+                       : i === 1 ? (liveStats?.restaurants ?? STAT_NUMS[1])
+                       : STAT_NUMS[i]
             return (
               <div key={stat.label}
                 className={`rv-animate rv-animate-delay-${i + 1} flex items-center gap-3 group`}>
