@@ -145,6 +145,41 @@ export async function POST(request: NextRequest) {
         subscribed_until:       periodEnd,
         trial_ends_at:          new Date().toISOString(), // trial has ended — stamp it now
       }).eq('id', restaurant.id)
+
+      // Award referral credit to the restaurant that referred this one
+      const { data: referral } = await admin
+        .from('referrals')
+        .select('id, referrer_id')
+        .eq('referred_id', restaurant.id)
+        .is('converted_at', null)
+        .maybeSingle()
+
+      if (referral) {
+        await Promise.all([
+          // Credit referrer €59 (1 month free)
+          admin.rpc('increment_referral_credits', {
+            p_restaurant_id: referral.referrer_id,
+            p_amount: 59,
+          }).then((res) => {
+            // Fallback if RPC not yet created: add to existing balance directly
+            if (res.error) {
+              return admin.from('restaurants')
+                .select('referral_credits')
+                .eq('id', referral.referrer_id)
+                .single()
+                .then(({ data: row }) =>
+                  admin.from('restaurants')
+                    .update({ referral_credits: ((row?.referral_credits as number) ?? 0) + 59 })
+                    .eq('id', referral.referrer_id)
+                )
+            }
+          }),
+          // Mark referral as converted
+          admin.from('referrals')
+            .update({ converted_at: new Date().toISOString() })
+            .eq('id', referral.id),
+        ])
+      }
       break
     }
 

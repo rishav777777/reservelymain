@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const { fullName, restaurantName, email, password, phone, city, venueType, message } =
+    const { fullName, restaurantName, email, password, phone, city, venueType, message, referralCode } =
       await request.json() as {
         fullName: string
         restaurantName: string
@@ -40,6 +40,7 @@ export async function POST(request: NextRequest) {
         city?: string
         venueType?: string | null
         message?: string | null
+        referralCode?: string | null
       }
 
     if (!fullName?.trim() || !restaurantName?.trim() || !email?.trim() || !password) {
@@ -109,6 +110,23 @@ export async function POST(request: NextRequest) {
         { error: `Profile error: ${profileError.message}` },
         { status: 500 }
       )
+    }
+
+    // Track referral if a code was supplied
+    if (referralCode) {
+      const { data: referrer } = await admin
+        .from('restaurants')
+        .select('id')
+        .eq('referral_code', referralCode.toUpperCase().trim())
+        .maybeSingle()
+
+      if (referrer && referrer.id !== restaurant.id) {
+        void admin.from('referrals').insert({
+          referrer_id:   referrer.id,
+          referred_id:   restaurant.id,
+          referral_code: referralCode.toUpperCase().trim(),
+        }) // non-blocking — don't fail signup over this
+      }
     }
 
     // Insert into demo_requests so the admin panel shows this application

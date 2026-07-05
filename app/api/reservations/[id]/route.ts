@@ -65,6 +65,48 @@ export async function PATCH(
   let tableId: string | undefined
 
   if (status === 'confirmed') {
+    // Attempt atomic allocation via DB function (migration 031 must be applied first).
+    // Falls back to the in-process allocator if the RPC is unavailable.
+    const { data: rpcResult, error: rpcErr } = await supabase
+      .rpc('confirm_reservation_atomic', {
+        p_reservation_id: id,
+        p_restaurant_id:  existing.restaurant_id,
+        p_date:           existing.reservation_date,
+        p_time:           existing.reservation_time,
+        p_duration:       existing.duration_minutes ?? 120,
+        p_party_size:     existing.party_size,
+        p_category:       existing.category ?? null,
+      })
+
+    if (!rpcErr && rpcResult?.[0]?.success) {
+      // RPC confirmed + allocated atomically — fetch the updated row and return
+      const { data, error: fetchErr } = await supabase
+        .from('reservations')
+        .select('*, restaurant_tables(name, capacity, category)')
+        .eq('id', id)
+        .single()
+      if (fetchErr) return NextResponse.json({ error: fetchErr.message }, { status: 500 })
+
+      logAction({
+        restaurant_id: existing.restaurant_id,
+        actor_id:      user.id,
+        actor_name:    profile.full_name ?? null,
+        action:        'reservation.confirmed',
+        target_type:   'reservation',
+        target_id:     id,
+        metadata: { reference_code: data.reference_code, guest_name: data.guest_name, new_status: 'confirmed' },
+      }).catch(() => {})
+
+      if (process.env.RESEND_API_KEY) {
+        const { data: restaurant } = await supabase
+          .from('restaurants').select('name, slug').eq('id', existing.restaurant_id).single()
+        sendConfirmationEmail(data, restaurant?.name ?? 'The Restaurant', restaurant?.slug ?? undefined).catch(() => {})
+      }
+
+      return NextResponse.json(data)
+    }
+
+    // Fallback: RPC not yet deployed — use in-process allocator (non-atomic)
     const { data: allTables } = await supabase
       .from('restaurant_tables')
       .select('*')
@@ -85,13 +127,7 @@ export async function PATCH(
       existing.duration_minutes ?? 120
     )
 
-    const allocated = allocateTable(
-      allTables ?? [],
-      existing.party_size,
-      existing.category,
-      occupiedIds
-    )
-
+    const allocated = allocateTable(allTables ?? [], existing.party_size, existing.category, occupiedIds)
     if (allocated) tableId = allocated.id
   }
 
@@ -162,12 +198,15 @@ export async function PATCH(
   if (status === 'confirmed' || status === 'rejected') {
     const { data: restaurant } = await supabase
       .from('restaurants')
-      .select('name')
+      .select('name, slug')
       .eq('id', existing.restaurant_id)
       .single()
     const restaurantName = restaurant?.name ?? 'The Restaurant'
-    const emailFn = status === 'confirmed' ? sendConfirmationEmail : sendRejectionEmail
-    emailFn(data, restaurantName).catch(() => {})
+    if (status === 'confirmed') {
+      sendConfirmationEmail(data, restaurantName, restaurant?.slug ?? undefined).catch(() => {})
+    } else {
+      sendRejectionEmail(data, restaurantName).catch(() => {})
+    }
   }
 
   return NextResponse.json(data)

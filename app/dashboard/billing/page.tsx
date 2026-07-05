@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { Check, Zap, ChevronRight, Loader2, AlertTriangle, CreditCard, X } from 'lucide-react'
 import { useLang } from '@/components/i18n/LanguageProvider'
 import { dashboardT } from '@/lib/i18n/dashboardT'
+import { ReferralWidget } from '@/components/dashboard/ReferralWidget'
 
 type Tier = {
   id: string; name: string; price: number; tagline: string
@@ -399,6 +400,8 @@ export default function BillingPage() {
           loading={cancelLoading}
         />
       )}
+
+      <ReferralWidget />
     </div>
   )
 }
