@@ -181,7 +181,7 @@ export default function AdminUsersPage() {
   const totalSuspended = users.filter(u => !u.is_active).length
 
   return (
-    <div className="p-6 max-w-5xl space-y-4">
+    <div className="p-4 md:p-6 max-w-5xl space-y-4">
       <div>
         <h1 className="text-sm font-semibold text-zinc-900">Platform Users</h1>
         <p className="text-xs text-zinc-400 mt-0.5">
@@ -214,7 +214,7 @@ export default function AdminUsersPage() {
       </div>
 
       {/* Table */}
-      <div className="bg-white border border-zinc-200 rounded-lg overflow-hidden">
+      <div className="bg-white border border-zinc-200 rounded-lg overflow-x-auto">
         <div className="grid grid-cols-[1fr_160px_80px_90px_90px_36px] gap-0 border-b border-zinc-100 px-4 py-2">
           {['User', 'Restaurant', 'Role', 'Status', 'Joined', ''].map((h, i) => (
             <span key={i} className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">{h}</span>

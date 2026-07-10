@@ -84,14 +84,14 @@ export default function AdminOverviewPage() {
   ]
 
   return (
-    <div className="p-6 max-w-5xl space-y-6">
+    <div className="p-4 md:p-6 max-w-5xl space-y-6">
       <div>
         <h1 className="text-sm font-semibold text-zinc-900">Platform Overview</h1>
         <p className="text-xs text-zinc-400 mt-0.5">Real-time stats across all restaurant accounts</p>
       </div>
 
       {/* Stat cards */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:grid-cols-4">
         {statCards.map(({ label, value, sub, icon: Icon, color, alert }) => (
           <div key={label} className={`bg-white border rounded-lg p-4 ${alert ? 'border-amber-200' : 'border-zinc-200'}`}>
             <div className="flex items-center justify-between mb-3">
@@ -106,7 +106,7 @@ export default function AdminOverviewPage() {
         ))}
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {/* Plan breakdown */}
         <div className="bg-white border border-zinc-200 rounded-lg p-5">
           <p className="text-xs font-semibold text-zinc-700 mb-4">Plan distribution</p>
@@ -171,7 +171,7 @@ export default function AdminOverviewPage() {
       </div>
 
       {/* Growth + activity */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="bg-white border border-zinc-200 rounded-lg p-5 flex items-center gap-4">
           <div className="w-9 h-9 rounded-lg bg-emerald-50 flex items-center justify-center shrink-0">
             <TrendingUp className="w-4 h-4 text-emerald-600" />

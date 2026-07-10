@@ -60,7 +60,7 @@ export default function AdminSettingsPage() {
   }
 
   return (
-    <div className="p-6 max-w-xl space-y-5">
+    <div className="p-4 md:p-6 max-w-xl space-y-5">
       <div>
         <h1 className="text-sm font-semibold text-zinc-900">Platform Settings</h1>
         <p className="text-xs text-zinc-400 mt-0.5">Global configuration for the Reservely platform</p>

@@ -48,7 +48,7 @@ export default function AdminBillingPage() {
   const mrr = stats?.estimated_mrr ?? 0
 
   return (
-    <div className="p-6 max-w-5xl space-y-6">
+    <div className="p-4 md:p-6 max-w-5xl space-y-6">
       <div>
         <h1 className="text-sm font-semibold text-zinc-900">Billing</h1>
         <p className="text-xs text-zinc-400 mt-0.5">Subscription status across all restaurant accounts</p>
@@ -67,7 +67,7 @@ export default function AdminBillingPage() {
       {!loading && (
         <>
           {/* MRR + plan summary */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="bg-white border border-zinc-200 rounded-lg p-5">
               <p className="text-xs text-zinc-500 mb-1">Estimated MRR (when Stripe goes live)</p>
               <p className="text-3xl font-bold text-zinc-900">€{mrr.toLocaleString('de-DE')}</p>
@@ -90,7 +90,7 @@ export default function AdminBillingPage() {
           </div>
 
           {/* Per-restaurant table */}
-          <div className="bg-white border border-zinc-200 rounded-lg overflow-hidden">
+          <div className="bg-white border border-zinc-200 rounded-lg overflow-x-auto">
             <p className="text-xs font-semibold text-zinc-500 px-4 py-3 border-b border-zinc-100 uppercase tracking-wider">
               Per-restaurant subscriptions
             </p>

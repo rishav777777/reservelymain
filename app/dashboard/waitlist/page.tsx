@@ -81,7 +81,7 @@ export default function WaitlistPage() {
       </div>
 
       {/* Filter tabs */}
-      <div className="flex gap-1 mb-4">
+      <div className="flex flex-wrap gap-1 mb-4">
         {(['all', 'waiting', 'notified', 'booked', 'cancelled'] as const).map(f => (
           <button
             key={f}

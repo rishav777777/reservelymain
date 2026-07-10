@@ -182,20 +182,22 @@ export function StaffClient({ team: initialTeam, pending: initialPending, curren
           return (
             <div
               key={member.id}
-              className={`flex items-center gap-3 bg-white border border-zinc-200 rounded-lg px-4 py-3 ${!isActive ? 'opacity-60' : ''}`}
+              className={`flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 bg-white border border-zinc-200 rounded-lg px-4 py-3 ${!isActive ? 'opacity-60' : ''}`}
             >
-              <div className="w-8 h-8 rounded-full bg-zinc-100 flex items-center justify-center shrink-0 text-xs font-medium text-zinc-500">
-                {memberInitials(member)}
+              <div className="flex items-center gap-3 flex-1 min-w-0">
+                <div className="w-8 h-8 rounded-full bg-zinc-100 flex items-center justify-center shrink-0 text-xs font-medium text-zinc-500">
+                  {memberInitials(member)}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-medium text-zinc-900 truncate">
+                    {member.full_name ?? 'Unnamed'}
+                    {isSelf && <span className="text-zinc-400 font-normal ml-1">{tx.you}</span>}
+                    {!isActive && <span className="text-zinc-400 font-normal ml-1">{tx.inactive}</span>}
+                  </p>
+                  <p className="text-xs text-zinc-400 truncate">{member.email ?? '—'}</p>
+                </div>
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-medium text-zinc-900 truncate">
-                  {member.full_name ?? 'Unnamed'}
-                  {isSelf && <span className="text-zinc-400 font-normal ml-1">{tx.you}</span>}
-                  {!isActive && <span className="text-zinc-400 font-normal ml-1">{tx.inactive}</span>}
-                </p>
-                <p className="text-xs text-zinc-400 truncate">{member.email ?? '—'}</p>
-              </div>
-              <div className="shrink-0 flex items-center gap-2">
+              <div className="shrink-0 flex items-center gap-2 pl-11 sm:pl-0">
                 {isSelf ? (
                   <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${ROLE_BADGE[member.role]}`}>
                     {ROLE_LABELS[member.role]}

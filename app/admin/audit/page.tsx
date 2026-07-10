@@ -61,8 +61,8 @@ export default function AdminAuditPage() {
   const actions = Array.from(new Set(logs.map(l => l.action))).sort()
 
   return (
-    <div className="p-6 max-w-4xl space-y-4">
-      <div className="flex items-center justify-between">
+    <div className="p-4 md:p-6 max-w-4xl space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h1 className="text-sm font-semibold text-zinc-900">Platform Audit Log</h1>
           <p className="text-xs text-zinc-400 mt-0.5">All activity across every restaurant</p>
@@ -97,7 +97,7 @@ export default function AdminAuditPage() {
       </div>
 
       {/* Table */}
-      <div className="bg-white border border-zinc-200 rounded-lg overflow-hidden">
+      <div className="bg-white border border-zinc-200 rounded-lg overflow-x-auto">
         <div className="grid grid-cols-[1fr_120px_160px_140px] gap-0 border-b border-zinc-100 px-4 py-2">
           {['Action', 'Actor', 'Restaurant', 'Time'].map(h => (
             <span key={h} className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">{h}</span>

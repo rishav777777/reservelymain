@@ -101,7 +101,7 @@ export default function AdminContentPage() {
   const INPUT = 'text-xs border border-zinc-200 rounded-md px-2.5 py-1.5 w-full focus:outline-none focus:ring-1 focus:ring-brand-primary/40'
 
   return (
-    <div className="p-6 max-w-4xl space-y-5">
+    <div className="p-4 md:p-6 max-w-4xl space-y-5">
       <div>
         <h1 className="text-sm font-semibold text-zinc-900">Content Management</h1>
         <p className="text-xs text-zinc-400 mt-0.5">Manage testimonials and FAQs shown on the landing page</p>
@@ -130,7 +130,7 @@ export default function AdminContentPage() {
           {/* Add form */}
           <form onSubmit={addTestimonial} className="bg-white border border-zinc-200 rounded-lg p-4 space-y-3">
             <p className="text-xs font-semibold text-zinc-700">Add testimonial</p>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <input required placeholder="Author name" value={newT.author_name} onChange={e => setNewT(p => ({ ...p, author_name: e.target.value }))} className={INPUT} />
               <input placeholder="Role (optional)" value={newT.author_role} onChange={e => setNewT(p => ({ ...p, author_role: e.target.value }))} className={INPUT} />
               <input placeholder="Restaurant name" value={newT.restaurant_name} onChange={e => setNewT(p => ({ ...p, restaurant_name: e.target.value }))} className={INPUT} />

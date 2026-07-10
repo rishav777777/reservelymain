@@ -90,15 +90,15 @@ export default function AdminDemoRequestsPage() {
   const pendingCount = requests.filter(r => r.status === 'pending').length
 
   return (
-    <div className="p-6 max-w-4xl space-y-5">
-      <div className="flex items-center justify-between">
+    <div className="p-4 md:p-6 max-w-4xl space-y-5">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-sm font-semibold text-zinc-900">Access Requests</h1>
           <p className="text-xs text-zinc-400 mt-0.5">
             {pendingCount} pending · {requests.length} total
           </p>
         </div>
-        <div className="flex gap-1.5">
+        <div className="flex flex-wrap gap-1.5">
           {FILTERS.map(s => (
             <button
               key={s}

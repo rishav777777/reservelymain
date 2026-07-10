@@ -41,7 +41,7 @@ export default function AdminGdprPage() {
   }
 
   return (
-    <div className="p-6 max-w-2xl space-y-6">
+    <div className="p-4 md:p-6 max-w-2xl space-y-6">
       <div>
         <h1 className="text-sm font-semibold text-zinc-900">GDPR Erasure</h1>
         <p className="text-xs text-zinc-400 mt-0.5">Art. 17 — Right to erasure. Anonymise all guest PII for a given email address.</p>

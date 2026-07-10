@@ -61,8 +61,8 @@ export default function AdminEmailLogsPage() {
   const failedCount = logs.filter(l => l.status === 'failed').length
 
   return (
-    <div className="p-6 max-w-4xl space-y-4">
-      <div className="flex items-center justify-between">
+    <div className="p-4 md:p-6 max-w-4xl space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h1 className="text-sm font-semibold text-zinc-900">Email Delivery Log</h1>
           <p className="text-xs text-zinc-400 mt-0.5">
@@ -82,7 +82,7 @@ export default function AdminEmailLogsPage() {
       </div>
 
       {/* Filters */}
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <select
           value={type}
           onChange={e => setType(e.target.value)}
@@ -110,7 +110,7 @@ export default function AdminEmailLogsPage() {
       </div>
 
       {/* Table */}
-      <div className="bg-white border border-zinc-200 rounded-lg overflow-hidden">
+      <div className="bg-white border border-zinc-200 rounded-lg overflow-x-auto">
         <div className="grid grid-cols-[140px_1fr_160px_80px_100px] gap-0 border-b border-zinc-100 px-4 py-2">
           {['Type', 'Recipient / Subject', 'Restaurant', 'Status', 'Sent at'].map(h => (
             <span key={h} className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">{h}</span>

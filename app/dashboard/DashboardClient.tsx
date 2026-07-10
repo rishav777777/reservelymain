@@ -285,24 +285,24 @@ export function DashboardClient({
               </button>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
               <a
                 href="/dashboard/quick"
-                className="flex items-center gap-1.5 border border-zinc-200 bg-white hover:bg-zinc-50 text-zinc-600 text-xs font-medium px-3 py-1.5 rounded-md transition-colors"
+                className="hidden sm:flex items-center gap-1.5 border border-zinc-200 bg-white hover:bg-zinc-50 text-zinc-600 text-xs font-medium px-3 py-1.5 rounded-md transition-colors"
               >
                 <Zap size={12} /> {tx.quickMode ?? 'Quick Mode'}
               </a>
               <button
                 onClick={() => setWalkInOpen(true)}
-                className="flex items-center gap-1.5 border border-zinc-200 bg-white hover:bg-zinc-50 text-zinc-700 text-xs font-medium px-3 py-1.5 rounded-md transition-colors"
+                className="flex items-center gap-1.5 border border-zinc-200 bg-white hover:bg-zinc-50 text-zinc-700 text-xs font-medium px-2.5 py-1.5 rounded-md transition-colors"
               >
-                <Plus size={12} /> {tx.walkIn}
+                <Plus size={12} /> <span className="hidden sm:inline">{tx.walkIn}</span>
               </button>
               <button
                 onClick={() => setCreateOpen(true)}
-                className="flex items-center gap-1.5 bg-brand-primary hover:bg-brand-primary/90 text-white text-xs font-medium px-3 py-1.5 rounded-md transition-colors"
+                className="flex items-center gap-1.5 bg-brand-primary hover:bg-brand-primary/90 text-white text-xs font-medium px-2.5 py-1.5 rounded-md transition-colors"
               >
-                <CalendarPlus size={12} /> {tx.newReservation}
+                <CalendarPlus size={12} /> <span className="hidden sm:inline">{tx.newReservation}</span>
               </button>
             </div>
           </div>
@@ -311,6 +311,13 @@ export function DashboardClient({
         {/* Scrollable content */}
         <div className="flex-1 overflow-auto p-5 pt-4 space-y-5">
           <QuickMetrics reservations={reservations} totalTables={totalTables} />
+
+          {/* Mobile-only pending queue */}
+          {pending.length > 0 && (
+            <div className="md:hidden">
+              <PendingQueue reservations={pending} onUpdate={handlePendingUpdate} onSelect={handleSelectReservation} />
+            </div>
+          )}
 
           {reservations.length === 0 && !loadingDate ? (
             <div className="flex flex-col items-center justify-center py-16 text-center">
@@ -348,8 +355,8 @@ export function DashboardClient({
         </div>
       </div>
 
-      {/* Right panel — pending queue + notices */}
-      <aside className="w-56 shrink-0 border-l border-zinc-200 bg-white overflow-auto">
+      {/* Right panel — pending queue + notices (hidden on mobile) */}
+      <aside className="hidden md:flex md:flex-col w-56 shrink-0 border-l border-zinc-200 bg-white overflow-auto">
         <div className="p-4 space-y-6">
           <PendingQueue reservations={pending} onUpdate={handlePendingUpdate} onSelect={handleSelectReservation} />
           {notices.length > 0 && (

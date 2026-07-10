@@ -105,14 +105,14 @@ export default function AdminRestaurantsPage() {
   const tabCounts = { active: 0, suspended: 0, deleted: 0 }
 
   return (
-    <div className="p-6 max-w-6xl space-y-5">
+    <div className="p-4 md:p-6 max-w-6xl space-y-5">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-sm font-semibold text-zinc-900">Restaurants</h1>
           <p className="text-xs text-zinc-400 mt-0.5">{filtered.length} shown</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <a
             href="/api/admin/export"
             download
@@ -151,7 +151,7 @@ export default function AdminRestaurantsPage() {
       </div>
 
       {/* Table */}
-      <div className="bg-white border border-zinc-200 rounded-lg overflow-hidden">
+      <div className="bg-white border border-zinc-200 rounded-lg overflow-x-auto">
         {loading ? (
           <div className="flex items-center justify-center h-32">
             <div className="w-5 h-5 border-2 border-brand-primary border-t-transparent rounded-full animate-spin" />

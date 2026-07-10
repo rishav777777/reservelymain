@@ -445,7 +445,7 @@ export function Screen2({ lang, dateStr, rawDate, timeStr, restaurantId, partySi
             width="100%" height="280"
             viewBox={viewBox}
             preserveAspectRatio="xMidYMid meet"
-            style={{ display:'block', borderRadius:'14px', background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.06)' }}
+            style={{ display:'block', borderRadius:'14px', background:'rgba(255,255,255,0.03)' }}
           >
             <defs>
               <pattern id="booking-dots" width="24" height="24" patternUnits="userSpaceOnUse">

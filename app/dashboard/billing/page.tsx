@@ -277,7 +277,7 @@ export default function BillingPage() {
       {/* Plan tiers */}
       <div>
         <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-4">{tx.plans}</p>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {tiers.map((tier) => (
             <div
               key={tier.id}

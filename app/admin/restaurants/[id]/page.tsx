@@ -183,7 +183,7 @@ export default function AdminRestaurantDetailPage() {
   const isDeleted = !!data.deleted_at
 
   return (
-    <div className="p-6 max-w-2xl space-y-5">
+    <div className="p-4 md:p-6 max-w-2xl space-y-5">
       {/* Back + title */}
       <div className="flex items-center gap-3">
         <Link href="/admin/restaurants" className="text-zinc-400 hover:text-zinc-700 transition-colors">

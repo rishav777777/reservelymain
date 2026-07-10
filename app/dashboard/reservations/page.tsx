@@ -159,25 +159,25 @@ export default function ReservationsPage() {
       </div>
 
       {/* Header */}
-      <header className="relative flex items-center justify-between px-4 md:px-8 py-4 shrink-0" style={{ zIndex: 20, background: 'rgba(255,255,255,0.55)', backdropFilter: 'blur(32px)', WebkitBackdropFilter: 'blur(32px)', borderBottom: '1px solid rgba(255,255,255,0.85)', boxShadow: '0 1px 0 rgba(28,35,31,0.06), 0 4px 24px rgba(28,35,31,0.05)' }}>
+      <header className="relative flex flex-wrap items-center justify-between gap-2 px-4 md:px-8 py-3 shrink-0" style={{ zIndex: 20, background: 'rgba(255,255,255,0.55)', backdropFilter: 'blur(32px)', WebkitBackdropFilter: 'blur(32px)', borderBottom: '1px solid rgba(255,255,255,0.85)', boxShadow: '0 1px 0 rgba(28,35,31,0.06), 0 4px 24px rgba(28,35,31,0.05)' }}>
         <div className="flex items-center gap-3">
-          <div className="flex items-center justify-center rounded-xl" style={{ width: 42, height: 42, background: '#0D472B', boxShadow: '0 2px 10px rgba(13,71,43,0.3)' }}>
-            <Leaf size={18} color="#ffffff" strokeWidth={2}/>
+          <div className="flex items-center justify-center rounded-xl" style={{ width: 36, height: 36, background: '#0D472B', boxShadow: '0 2px 10px rgba(13,71,43,0.3)' }}>
+            <Leaf size={16} color="#ffffff" strokeWidth={2}/>
           </div>
           <div>
-            <p style={{ fontFamily: "'DM Serif Display', serif", fontSize: 20, fontWeight: 400, color: '#1C231F', letterSpacing: '-0.02em', lineHeight: 1 }}>{restaurantName || 'Reservely'}</p>
-            <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 11, fontWeight: 500, color: '#8fa393', letterSpacing: '0.12em', textTransform: 'uppercase', marginTop: 2 }}>{lang === 'DE' ? 'Reservierungs-Dashboard' : 'Reservations Dashboard'}</p>
+            <p style={{ fontFamily: "'DM Serif Display', serif", fontSize: 17, fontWeight: 400, color: '#1C231F', letterSpacing: '-0.02em', lineHeight: 1 }}>{restaurantName || 'Reservely'}</p>
+            <p className="hidden sm:block" style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 10, fontWeight: 500, color: '#8fa393', letterSpacing: '0.12em', textTransform: 'uppercase', marginTop: 2 }}>{lang === 'DE' ? 'Reservierungs-Dashboard' : 'Reservations Dashboard'}</p>
           </div>
         </div>
 
-        <div className="rounded-xl px-5 py-2 flex items-center gap-2" style={{ background: 'rgba(255,255,255,0.65)', border: '1px solid rgba(255,255,255,0.9)' }}>
-          <CalendarDays size={16} strokeWidth={2} style={{ color: '#1B7A43' }}/>
-          <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 14, fontWeight: 600, color: '#1C231F' }}>
+        <div className="hidden md:flex rounded-xl px-4 py-1.5 items-center gap-2" style={{ background: 'rgba(255,255,255,0.65)', border: '1px solid rgba(255,255,255,0.9)' }}>
+          <CalendarDays size={15} strokeWidth={2} style={{ color: '#1B7A43' }}/>
+          <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 600, color: '#1C231F' }}>
             {now.toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
           </span>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           {totalPending > 0 && (
             <div className="flex items-center gap-2.5 rounded-xl px-4 py-2" style={{ background: '#0D472B', boxShadow: '0 2px 12px rgba(13,71,43,0.3)' }}>
               <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#fff', opacity: 0.85 }}/>
@@ -191,10 +191,10 @@ export default function ReservationsPage() {
       </header>
 
       {/* Split layout */}
-      <div className="relative flex flex-1" style={{ zIndex: 1, overflow: 'hidden', height: 'calc(100vh - 66px)' }}>
+      <div className="relative flex flex-col md:flex-row flex-1" style={{ zIndex: 1, overflow: 'hidden', height: 'calc(100vh - 66px)' }}>
 
         {/* LEFT: Calendar */}
-        <div className="flex flex-col shrink-0" style={{ width: '45%', overflow: 'hidden', borderRight: '1px solid rgba(28,35,31,0.08)' }}>
+        <div className="flex flex-col shrink-0 w-full md:w-[45%] border-b md:border-b-0 md:border-r border-[rgba(28,35,31,0.08)] overflow-hidden">
           <div className="flex flex-col flex-1 m-5 rounded-2xl overflow-hidden" style={{ background: 'rgba(255,255,255,0.52)', backdropFilter: 'blur(32px)', WebkitBackdropFilter: 'blur(32px)', border: '1px solid rgba(255,255,255,0.85)', boxShadow: '0 8px 40px rgba(28,35,31,0.1), 0 1px 4px rgba(28,35,31,0.06), inset 0 1px 0 rgba(255,255,255,0.9)' }}>
             <div className="flex items-center gap-2 px-5 pt-4 pb-0">
               <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 11, fontWeight: 600, color: '#8fa393', letterSpacing: '0.14em', textTransform: 'uppercase' }}>{tx.monthOverview}</p>

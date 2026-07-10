@@ -9,7 +9,7 @@ export default function MessagesPage() {
   const tx = dashboardT[lang].messagesPage
 
   return (
-    <div className="p-8">
+    <div className="p-4 md:p-8">
       <div className="mb-6">
         <h1 className="text-xl font-semibold text-zinc-900">{tx.title}</h1>
         <p className="text-sm text-zinc-400 mt-0.5">{tx.subtitle}</p>
