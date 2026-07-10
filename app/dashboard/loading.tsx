@@ -14,7 +14,7 @@ export default function DashboardLoading() {
 
         <div className="flex-1 overflow-auto p-6 space-y-6">
           {/* Metrics skeleton */}
-          <div className="grid grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {Array.from({ length: 4 }).map((_, i) => (
               <div
                 key={i}

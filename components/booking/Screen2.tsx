@@ -17,6 +17,18 @@ interface ZoneInfo {
   label:      string
   is_open:    boolean
   sort_order: number
+  x:          number
+  y:          number
+  w:          number
+  h:          number
+}
+
+interface LayoutTablePos {
+  id: string
+  x:  number
+  y:  number
+  w:  number
+  h:  number
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -42,10 +54,10 @@ const GLASS: React.CSSProperties = {
 
 // ─── Demo data ────────────────────────────────────────────────────────────────
 const DEMO_ZONES: ZoneInfo[] = [
-  { label: 'Indoor',  is_open: true, sort_order: 0 },
-  { label: 'Bar',     is_open: true, sort_order: 1 },
-  { label: 'Outdoor', is_open: true, sort_order: 2 },
-  { label: 'VIP',     is_open: true, sort_order: 3 },
+  { label: 'Indoor',  is_open: true, sort_order: 0, x:  20, y:  20, w: 340, h: 240 },
+  { label: 'Bar',     is_open: true, sort_order: 1, x: 380, y:  20, w: 180, h: 180 },
+  { label: 'Outdoor', is_open: true, sort_order: 2, x:  20, y: 280, w: 280, h: 180 },
+  { label: 'VIP',     is_open: true, sort_order: 3, x: 380, y: 220, w: 180, h: 160 },
 ]
 
 const DEMO_TABLES: LiveTable[] = [
@@ -59,6 +71,19 @@ const DEMO_TABLES: LiveTable[] = [
   { id:'demo-t8',  name:'T8',  capacity:2, category:'OUTDOOR', status:'free',     heldBySession:null    },
   { id:'demo-t9',  name:'T9',  capacity:8, category:'VIP',     status:'free',     heldBySession:null    },
   { id:'demo-t10', name:'T10', capacity:4, category:'VIP',     status:'reserved', heldBySession:null    },
+]
+
+const DEMO_LAYOUT_TABLES: LayoutTablePos[] = [
+  { id:'demo-t1',  x:  40, y:  50, w: 60, h: 44 },
+  { id:'demo-t2',  x: 120, y:  50, w: 60, h: 44 },
+  { id:'demo-t3',  x: 200, y:  50, w: 60, h: 44 },
+  { id:'demo-t4',  x:  40, y: 130, w: 60, h: 44 },
+  { id:'demo-t5',  x: 120, y: 130, w: 60, h: 44 },
+  { id:'demo-t6',  x: 400, y:  50, w: 60, h: 44 },
+  { id:'demo-t7',  x: 480, y:  50, w: 60, h: 44 },
+  { id:'demo-t8',  x:  40, y: 310, w: 60, h: 44 },
+  { id:'demo-t9',  x: 400, y: 250, w: 60, h: 44 },
+  { id:'demo-t10', x: 480, y: 250, w: 60, h: 44 },
 ]
 
 // ─── Props ────────────────────────────────────────────────────────────────────
@@ -83,9 +108,10 @@ export function Screen2({ lang, dateStr, rawDate, timeStr, restaurantId, partySi
   const sessionId = useRef(getOrCreateSessionId())
   const time      = parseTimeFrom(timeStr)
 
-  const [tables,     setTables]     = useState<LiveTable[]>([])
-  const [zones,      setZones]      = useState<ZoneInfo[]>([])
-  const [activeZone, setActiveZone] = useState<string>('')
+  const [tables,       setTables]       = useState<LiveTable[]>([])
+  const [zones,        setZones]        = useState<ZoneInfo[]>([])
+  const [layoutTables, setLayoutTables] = useState<LayoutTablePos[]>([])
+  const [activeZone,   setActiveZone]   = useState<string>('')
   const [loading,    setLoading]    = useState(true)
   const [error,      setError]      = useState<string | null>(null)
   const [selId,      setSelId]      = useState<string | null>(null)
@@ -104,7 +130,8 @@ export function Screen2({ lang, dateStr, rawDate, timeStr, restaurantId, partySi
     if (demoMode) {
       setZones(DEMO_ZONES)
       setTables(DEMO_TABLES)
-      setActiveZone(prev => prev || 'INDOOR')
+      setLayoutTables(DEMO_LAYOUT_TABLES)
+      setActiveZone(prev => prev || DEMO_ZONES[0].label.toUpperCase())
       setLoading(false)
       return
     }
@@ -127,13 +154,28 @@ export function Screen2({ lang, dateStr, rawDate, timeStr, restaurantId, partySi
       if (resLayout.ok) {
         const layoutJson = await resLayout.json()
         if (Array.isArray(layoutJson.zones) && layoutJson.zones.length > 0) {
-          fetchedZones = (layoutJson.zones as Array<{ label: string; is_open: boolean; sort_order?: number }>)
-            .map(z => ({ label: z.label, is_open: z.is_open !== false, sort_order: z.sort_order ?? 0 }))
+          fetchedZones = (layoutJson.zones as Array<{ label: string; is_open: boolean; sort_order?: number; x?: number; y?: number; w?: number; h?: number }>)
+            .map(z => ({
+              label:      z.label,
+              is_open:    z.is_open !== false,
+              sort_order: z.sort_order ?? 0,
+              x:          z.x ?? 0,
+              y:          z.y ?? 0,
+              w:          z.w ?? 200,
+              h:          z.h ?? 140,
+            }))
             .sort((a, b) => a.sort_order - b.sort_order)
 
           fetchedZones
             .filter(z => !z.is_open)
             .forEach(z => closedKeys.add(z.label.toUpperCase()))
+        }
+
+        if (Array.isArray(layoutJson.tables)) {
+          setLayoutTables(
+            (layoutJson.tables as Array<{ id: string; x?: number; y?: number; w?: number; h?: number }>)
+              .map(t => ({ id: t.id, x: t.x ?? 0, y: t.y ?? 0, w: t.w ?? 58, h: t.h ?? 44 }))
+          )
         }
       }
 
@@ -151,7 +193,7 @@ export function Screen2({ lang, dateStr, rawDate, timeStr, restaurantId, partySi
       if (openZones.length === 0) {
         const seen = new Set<string>()
         processed.forEach(tb => seen.add(tb.category))
-        fetchedZones = [...seen].map((c, i) => ({ label: c, is_open: true, sort_order: i }))
+        fetchedZones = [...seen].map((c, i) => ({ label: c, is_open: true, sort_order: i, x: 0, y: 0, w: 0, h: 0 }))
       }
 
       const visibleZones = fetchedZones.filter(z => z.is_open)
@@ -277,7 +319,19 @@ export function Screen2({ lang, dateStr, rawDate, timeStr, restaurantId, partySi
   const tablesInZone = (zoneLabel: string) =>
     tables.filter(tb => tb.category.toUpperCase() === zoneLabel.toUpperCase())
 
-  const visibleTables = tablesInZone(activeZone)
+  const visibleTables   = tablesInZone(activeZone)
+  const activeZoneIdx   = Math.max(0, zones.findIndex(z => z.label.toUpperCase() === activeZone))
+  const currentZone     = zones[activeZoneIdx] ?? null
+  const goLeft          = () => { if (activeZoneIdx > 0) setActiveZone(zones[activeZoneIdx - 1].label.toUpperCase()) }
+  const goRight         = () => { if (activeZoneIdx < zones.length - 1) setActiveZone(zones[activeZoneIdx + 1].label.toUpperCase()) }
+  const hasLayoutPositions = layoutTables.length > 0
+
+  const pad = 24
+  const vbX = (currentZone?.x ?? 0) - pad
+  const vbY = (currentZone?.y ?? 0) - pad
+  const vbW = (currentZone?.w ?? 400) + pad * 2
+  const vbH = (currentZone?.h ?? 280) + pad * 2
+  const viewBox = `${vbX} ${vbY} ${vbW} ${vbH}`
 
   // ─── Render ────────────────────────────────────────────────────────────────
   return (
@@ -320,61 +374,57 @@ export function Screen2({ lang, dateStr, rawDate, timeStr, restaurantId, partySi
         </div>
       )}
 
-      {/* ── Zone tab bar (only when >1 section) ─────────────────────────────── */}
-      {!loading && !error && zones.length > 1 && (
-        <div className="zone-scroller" style={{ display:'flex', gap:'8px', overflowX:'auto', paddingBottom:'2px', scrollbarWidth:'none' }}>
-          {zones.map(zone => {
-            const key        = zone.label.toUpperCase()
-            const freeCount  = tablesInZone(key).filter(tb => tb.status === 'free' && tb.capacity >= partySize).length
-            const isActive   = activeZone === key
-            return (
-              <button key={key} onClick={() => setActiveZone(key)}
-                style={{
-                  flexShrink:          0,
-                  padding:             '9px 16px',
-                  borderRadius:        '100px',
-                  background:          isActive ? 'rgba(52,211,153,0.12)' : 'rgba(255,255,255,0.06)',
-                  border:              `1.5px solid ${isActive ? 'rgba(52,211,153,0.40)' : 'rgba(255,255,255,0.10)'}`,
-                  color:               isActive ? '#34D399' : 'rgba(255,255,255,0.50)',
-                  fontFamily:          "'DM Sans',sans-serif",
-                  fontSize:            '13px',
-                  fontWeight:          600,
-                  cursor:              'pointer',
-                  display:             'flex',
-                  alignItems:          'center',
-                  gap:                 '7px',
-                  transition:          'all .15s',
-                  backdropFilter:      'blur(20px)',
-                  WebkitBackdropFilter:'blur(20px)',
-                }}>
-                {zone.label}
-                <span style={{
-                  background:   isActive ? 'rgba(52,211,153,0.18)' : 'rgba(255,255,255,0.09)',
-                  color:        isActive ? '#34D399' : freeCount === 0 ? 'rgba(255,255,255,0.22)' : 'rgba(255,255,255,0.45)',
-                  fontSize:     '10px',
-                  fontWeight:   700,
-                  padding:      '2px 7px',
-                  borderRadius: '100px',
-                  minWidth:     '18px',
-                  textAlign:    'center',
-                }}>
-                  {freeCount}
-                </span>
-              </button>
-            )
-          })}
+      {/* ── Zone navigation ──────────────────────────────────────────────────── */}
+      {!loading && !error && zones.length > 0 && (
+        <div style={{ display:'flex', alignItems:'center', gap:'10px' }}>
+          <button onClick={goLeft} disabled={activeZoneIdx === 0}
+            aria-label="Previous section"
+            style={{
+              width:'40px', height:'40px', borderRadius:'50%', flexShrink:0,
+              background:      activeZoneIdx === 0 ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.10)',
+              border:          `1.5px solid ${activeZoneIdx === 0 ? 'rgba(255,255,255,0.07)' : 'rgba(255,255,255,0.18)'}`,
+              color:           activeZoneIdx === 0 ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.80)',
+              fontSize:        '20px', lineHeight:1,
+              cursor:          activeZoneIdx === 0 ? 'default' : 'pointer',
+              display:'flex', alignItems:'center', justifyContent:'center',
+              transition:'all .15s',
+            }}>‹</button>
+
+          <div style={{ flex:1, textAlign:'center' }}>
+            <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:'14px', fontWeight:700, color:'#fff', letterSpacing:'-0.01em' }}>
+              {currentZone?.label}
+            </div>
+            <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:'11px', color:'rgba(255,255,255,0.35)', marginTop:'2px' }}>
+              {tablesInZone(activeZone).filter(tb => tb.status === 'free' && tb.capacity >= partySize).length}
+              {' '}{lang === 'DE' ? 'frei' : 'available'}
+              {' '}·{' '}{activeZoneIdx + 1}/{zones.length}
+            </div>
+          </div>
+
+          <button onClick={goRight} disabled={activeZoneIdx === zones.length - 1}
+            aria-label="Next section"
+            style={{
+              width:'40px', height:'40px', borderRadius:'50%', flexShrink:0,
+              background:      activeZoneIdx === zones.length - 1 ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.10)',
+              border:          `1.5px solid ${activeZoneIdx === zones.length - 1 ? 'rgba(255,255,255,0.07)' : 'rgba(255,255,255,0.18)'}`,
+              color:           activeZoneIdx === zones.length - 1 ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.80)',
+              fontSize:        '20px', lineHeight:1,
+              cursor:          activeZoneIdx === zones.length - 1 ? 'default' : 'pointer',
+              display:'flex', alignItems:'center', justifyContent:'center',
+              transition:'all .15s',
+            }}>›</button>
         </div>
       )}
 
-      {/* ── Table card grid ──────────────────────────────────────────────────── */}
-      <div style={{ ...GLASS, padding:'16px' }}>
+      {/* ── Floor plan / table grid ───────────────────────────────────────────── */}
+      <div style={{ ...GLASS, padding:'12px' }}>
         {loading ? (
-          <div style={{ height:'200px', display:'flex', alignItems:'center', justifyContent:'center' }}>
+          <div style={{ height:'220px', display:'flex', alignItems:'center', justifyContent:'center' }}>
             <div style={{ width:'26px', height:'26px', borderRadius:'50%', border:'2.5px solid rgba(52,211,153,0.20)', borderTopColor:'#34D399', animation:'spin 0.75s linear infinite' }}/>
           </div>
 
         ) : error ? (
-          <div style={{ height:'200px', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:'10px' }}>
+          <div style={{ height:'220px', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:'10px' }}>
             <span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:'13px', color:'#fca5a5' }}>{error}</span>
             <button onClick={fetchTables} style={{ fontFamily:"'DM Sans',sans-serif", fontSize:'12px', color:'#34D399', background:'none', border:'none', cursor:'pointer', textDecoration:'underline' }}>
               {lang === 'DE' ? 'Erneut versuchen' : 'Try again'}
@@ -389,15 +439,84 @@ export function Screen2({ lang, dateStr, rawDate, timeStr, restaurantId, partySi
             </span>
           </div>
 
+        ) : hasLayoutPositions ? (
+          /* ── SVG floor plan ─────────────────────────────────────────────────── */
+          <svg
+            width="100%" height="280"
+            viewBox={viewBox}
+            preserveAspectRatio="xMidYMid meet"
+            style={{ display:'block', borderRadius:'14px', background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.06)' }}
+          >
+            <defs>
+              <pattern id="booking-dots" width="24" height="24" patternUnits="userSpaceOnUse">
+                <circle cx="2" cy="2" r="1" fill="rgba(255,255,255,0.06)" />
+              </pattern>
+            </defs>
+            <rect x={vbX} y={vbY} width={vbW} height={vbH} fill="url(#booking-dots)" />
+            {currentZone && (
+              <rect x={currentZone.x} y={currentZone.y} width={currentZone.w} height={currentZone.h} rx="12"
+                fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.10)" strokeWidth="1.5" strokeDasharray="5 4" />
+            )}
+            {visibleTables.map(tb => {
+              const pos      = layoutTables.find(p => p.id === tb.id)
+              if (!pos) return null
+              const isSel      = tb.id === selId
+              const isReserved = tb.status === 'reserved'
+              const isHeld     = tb.status === 'held'
+              const tooSmall   = tb.capacity < partySize
+              const canClick   = tb.status === 'free' && !tooSmall
+              const fill = isSel      ? 'rgba(52,211,153,0.25)'
+                         : tooSmall   ? 'rgba(255,255,255,0.04)'
+                         : isHeld     ? 'rgba(251,191,36,0.18)'
+                         : isReserved ? 'rgba(100,116,139,0.15)'
+                         :              'rgba(255,255,255,0.14)'
+              const stroke = isSel      ? '#34D399'
+                           : tooSmall   ? 'rgba(255,255,255,0.08)'
+                           : isHeld     ? 'rgba(251,191,36,0.45)'
+                           : isReserved ? 'rgba(100,116,139,0.30)'
+                           :              'rgba(255,255,255,0.22)'
+              const nameCol = isSel      ? '#34D399'
+                            : tooSmall   ? 'rgba(255,255,255,0.20)'
+                            : isHeld     ? 'rgba(251,191,36,0.80)'
+                            : isReserved ? 'rgba(255,255,255,0.22)'
+                            :              'rgba(255,255,255,0.90)'
+              const subLabel = isReserved ? (lang==='DE'?'Belegt':'Reserved')
+                             : isHeld     ? (lang==='DE'?'Gehalten':'Held')
+                             : tooSmall   ? (lang==='DE'?'Zu klein':'Too small')
+                             :              `${tb.capacity}${lang==='DE'?' Pl.':' seats'}`
+              return (
+                <g key={tb.id}
+                  onClick={() => canClick && handleSelect(tb)}
+                  style={{ cursor:canClick?'pointer':'default', opacity:(isReserved||(tooSmall&&!isSel))?0.5:1 }}>
+                  <rect x={pos.x} y={pos.y} width={pos.w} height={pos.h} rx="9"
+                    fill={fill} stroke={stroke} strokeWidth={isSel?2:1.5} />
+                  {(isSel || isHeld) && (
+                    <circle cx={pos.x+pos.w-5} cy={pos.y+5} r="4"
+                      fill={isSel?'#34D399':'#fbbf24'}
+                      stroke={isSel?'rgba(52,211,153,0.5)':'rgba(251,191,36,0.5)'}
+                      strokeWidth="1" />
+                  )}
+                  <text x={pos.x+pos.w/2} y={pos.y+pos.h/2-4} textAnchor="middle"
+                    style={{ fontFamily:"'DM Sans',sans-serif", fontSize:'10px', fontWeight:700, fill:nameCol, pointerEvents:'none' }}>
+                    {tb.name}
+                  </text>
+                  <text x={pos.x+pos.w/2} y={pos.y+pos.h/2+8} textAnchor="middle"
+                    style={{ fontFamily:"'DM Sans',sans-serif", fontSize:'8px', fill:nameCol, opacity:0.65, pointerEvents:'none' }}>
+                    {subLabel}
+                  </text>
+                </g>
+              )
+            })}
+          </svg>
+
         ) : (
-          <>
-            {/* Section label when there's only one zone (no tabs shown above) */}
+          /* ── Fallback card grid (no layout positions configured) ────────────── */
+          <div style={{ padding:'4px' }}>
             {zones.length <= 1 && zones[0] && (
               <p style={{ fontFamily:"'DM Sans',sans-serif", fontSize:'10px', fontWeight:700, color:'rgba(255,255,255,0.25)', textTransform:'uppercase', letterSpacing:'0.08em', margin:'0 0 12px' }}>
                 {zones[0].label}
               </p>
             )}
-
             <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(86px, 1fr))', gap:'8px' }}>
               {visibleTables.map(tb => {
                 const isSel      = tb.id === selId
@@ -405,34 +524,28 @@ export function Screen2({ lang, dateStr, rawDate, timeStr, restaurantId, partySi
                 const isHeld     = tb.status === 'held'
                 const tooSmall   = tb.capacity < partySize
                 const canClick   = tb.status === 'free' && !tooSmall
-
                 const bg = isSel      ? 'rgba(52,211,153,0.12)'
                          : tooSmall   ? 'rgba(255,255,255,0.02)'
                          : isHeld     ? 'rgba(251,191,36,0.10)'
                          : isReserved ? 'rgba(100,116,139,0.10)'
                          :              'rgba(255,255,255,0.08)'
-
                 const borderCol = isSel      ? 'rgba(52,211,153,0.55)'
                                 : tooSmall   ? 'rgba(255,255,255,0.07)'
                                 : isHeld     ? 'rgba(251,191,36,0.35)'
                                 : isReserved ? 'rgba(100,116,139,0.25)'
                                 :              'rgba(255,255,255,0.14)'
-
                 const nameColor = isSel      ? '#34D399'
                                 : tooSmall   ? 'rgba(255,255,255,0.18)'
                                 : isHeld     ? 'rgba(251,191,36,0.80)'
                                 : isReserved ? 'rgba(255,255,255,0.22)'
                                 :              'rgba(255,255,255,0.90)'
-
-                const subLabel = isReserved ? (lang === 'DE' ? 'Belegt'   : 'Reserved')
-                               : isHeld     ? (lang === 'DE' ? 'Gehalten' : 'Held')
-                               :              `${tb.capacity}${lang === 'DE' ? ' Pl.' : ' seats'}`
-
+                const subLabel = isReserved ? (lang==='DE'?'Belegt':'Reserved')
+                               : isHeld     ? (lang==='DE'?'Gehalten':'Held')
+                               :              `${tb.capacity}${lang==='DE'?' Pl.':' seats'}`
                 const subColor = isReserved ? 'rgba(255,255,255,0.18)'
                                : isHeld     ? 'rgba(251,191,36,0.60)'
                                : tooSmall   ? 'rgba(255,255,255,0.18)'
                                :              'rgba(255,255,255,0.38)'
-
                 return (
                   <div key={tb.id}
                     onClick={() => canClick && handleSelect(tb)}
@@ -449,17 +562,14 @@ export function Screen2({ lang, dateStr, rawDate, timeStr, restaurantId, partySi
                       transition:   'all .15s',
                       userSelect:   'none',
                     }}>
-
-                    {/* Status dot */}
                     {(isSel || isHeld) && (
                       <div style={{
-                        position:   'absolute', top:'7px', right:'7px',
+                        position:'absolute', top:'7px', right:'7px',
                         width:'6px', height:'6px', borderRadius:'50%',
                         background:  isSel ? '#34D399' : '#fbbf24',
                         boxShadow:   isSel ? '0 0 8px rgba(52,211,153,0.6)' : '0 0 6px rgba(251,191,36,0.5)',
                       }}/>
                     )}
-
                     <div style={{ fontFamily:"'DM Serif Display',serif", fontSize:'16px', color:nameColor, letterSpacing:'-0.01em', lineHeight:1 }}>
                       {tb.name}
                     </div>
@@ -470,7 +580,7 @@ export function Screen2({ lang, dateStr, rawDate, timeStr, restaurantId, partySi
                 )
               })}
             </div>
-          </>
+          </div>
         )}
       </div>
 

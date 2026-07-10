@@ -177,7 +177,7 @@ export function SettingsClient({ restaurant, isOwner = false }: Props) {
     <div className="min-h-full">
 
       {/* Page header */}
-      <div className="bg-white border-b border-zinc-200 px-8 pt-7 pb-0">
+      <div className="bg-white border-b border-zinc-200 px-4 md:px-8 pt-7 pb-0">
         <div className="mb-5">
           <h1 className="text-xl font-bold text-zinc-900">{tx.title}</h1>
           <p className="text-sm text-zinc-400 mt-0.5">
@@ -205,7 +205,7 @@ export function SettingsClient({ restaurant, isOwner = false }: Props) {
       </div>
 
       {/* Content */}
-      <div className="px-8 py-7 max-w-2xl space-y-5">
+      <div className="px-4 md:px-8 py-7 max-w-2xl space-y-5">
 
         {/* ══════════ Your restaurant ══════════ */}
         {tab === 'profile' && (
@@ -236,7 +236,7 @@ export function SettingsClient({ restaurant, isOwner = false }: Props) {
                 />
               </FieldRow>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <FieldRow label={tx.profile.cuisineType} hint={tx.profile.cuisineHint}>
                   <Input
                     placeholder="Austrian"
@@ -255,7 +255,7 @@ export function SettingsClient({ restaurant, isOwner = false }: Props) {
                 </FieldRow>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <FieldRow label={tx.profile.contactEmail}>
                   <Input
                     type="email"

@@ -159,7 +159,7 @@ export default function ReservationsPage() {
       </div>
 
       {/* Header */}
-      <header className="relative flex items-center justify-between px-8 py-4 shrink-0" style={{ zIndex: 20, background: 'rgba(255,255,255,0.55)', backdropFilter: 'blur(32px)', WebkitBackdropFilter: 'blur(32px)', borderBottom: '1px solid rgba(255,255,255,0.85)', boxShadow: '0 1px 0 rgba(28,35,31,0.06), 0 4px 24px rgba(28,35,31,0.05)' }}>
+      <header className="relative flex items-center justify-between px-4 md:px-8 py-4 shrink-0" style={{ zIndex: 20, background: 'rgba(255,255,255,0.55)', backdropFilter: 'blur(32px)', WebkitBackdropFilter: 'blur(32px)', borderBottom: '1px solid rgba(255,255,255,0.85)', boxShadow: '0 1px 0 rgba(28,35,31,0.06), 0 4px 24px rgba(28,35,31,0.05)' }}>
         <div className="flex items-center gap-3">
           <div className="flex items-center justify-center rounded-xl" style={{ width: 42, height: 42, background: '#0D472B', boxShadow: '0 2px 10px rgba(13,71,43,0.3)' }}>
             <Leaf size={18} color="#ffffff" strokeWidth={2}/>

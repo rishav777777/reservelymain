@@ -245,7 +245,7 @@ export default function LayoutEditorPage() {
   }
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-6">
+    <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-6">
       <div className="flex items-center justify-between border-b border-zinc-200 pb-5">
         <div>
           <h1 className="text-2xl font-serif text-zinc-900 font-medium tracking-tight">{tx.title}</h1>
@@ -277,12 +277,15 @@ export default function LayoutEditorPage() {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-4 gap-6 items-start">
+      <div className="grid grid-cols-1 xl:grid-cols-4 gap-6 items-start min-w-0">
         <div className="xl:col-span-1 space-y-5">
           <div style={GLASS_PANEL} className="p-5 rounded-[24px]">
-            <h2 className="text-xs font-bold text-zinc-700 tracking-wider uppercase mb-3 flex items-center gap-1.5">
+            <h2 className="text-xs font-bold text-zinc-700 tracking-wider uppercase mb-2 flex items-center gap-1.5">
               <Layers size={13} className="text-zinc-500" /> {tx.sections}
             </h2>
+            <p className="text-[10px] text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-lg px-2.5 py-2 mb-3 leading-relaxed">
+              Each section becomes a <strong>separate booking page</strong> that guests navigate with arrows — name them clearly (e.g. &ldquo;Indoor&rdquo;, &ldquo;Terrace&rdquo;, &ldquo;Bar&rdquo;).
+            </p>
             <div className="space-y-3">
               <input
                 type="text"
@@ -388,15 +391,15 @@ export default function LayoutEditorPage() {
           </div>
         </div>
 
-        <div className="xl:col-span-3 flex flex-col items-center">
+        <div className="xl:col-span-3 flex flex-col items-center min-w-0">
           {loading ? (
-            <div style={{ width: canvasWidth, height: canvasHeight, display: 'flex',
+            <div style={{ width: '100%', maxWidth: canvasWidth, height: canvasHeight, display: 'flex',
               alignItems: 'center', justifyContent: 'center',
               background: '#f9fafb', border: '1px solid #e4e7eb', borderRadius: 16 }}>
               <p className="text-xs text-zinc-400">{tx.loadingLayout}</p>
             </div>
           ) : zones.length === 0 ? (
-            <div style={{ width: canvasWidth, height: canvasHeight, display: 'flex', flexDirection: 'column',
+            <div style={{ width: '100%', maxWidth: canvasWidth, height: canvasHeight, display: 'flex', flexDirection: 'column',
               alignItems: 'center', justifyContent: 'center', gap: 8,
               background: '#f9fafb', border: '1.5px dashed #d1d5db', borderRadius: 16 }}>
               <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 600, color: '#6b7280' }}>No layout configured yet</p>
@@ -405,6 +408,7 @@ export default function LayoutEditorPage() {
               </p>
             </div>
           ) : (
+          <div style={{ width: '100%', overflowX: 'auto' }}>
           <svg
             ref={canvasRef}
             width={canvasWidth}
@@ -496,6 +500,7 @@ export default function LayoutEditorPage() {
               )
             })}
           </svg>
+          </div>
           )}
         </div>
       </div>

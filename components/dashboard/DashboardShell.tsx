@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
@@ -7,7 +8,7 @@ import { UserRole } from '@/types'
 import {
   CalendarDays, CalendarRange, LayoutGrid,
   Repeat2, Users2, Users, MessageSquare, BarChart2,
-  UserCog, CreditCard, Settings, LogOut, Wifi, WifiOff, Clock,
+  UserCog, CreditCard, Settings, LogOut, Wifi, WifiOff, Clock, Menu, X,
 } from 'lucide-react'
 import { useLang } from '@/components/i18n/LanguageProvider'
 import { LanguageToggle } from '@/components/i18n/LanguageToggle'
@@ -30,10 +31,11 @@ function colorFromName(name: string) {
 }
 
 export function DashboardShell({ children, userRole, restaurantName, userName, waSetup }: Props) {
-  const pathname = usePathname()
-  const router   = useRouter()
-  const { lang } = useLang()
-  const tx       = dashboardT[lang]
+  const pathname        = usePathname()
+  const router          = useRouter()
+  const { lang }        = useLang()
+  const tx              = dashboardT[lang]
+  const [mobileOpen, setMobileOpen] = useState(false)
 
   if (pathname === '/dashboard/quick') {
     return <div className="h-screen overflow-hidden">{children}</div>
@@ -93,12 +95,43 @@ export function DashboardShell({ children, userRole, restaurantName, userName, w
     <div className="flex flex-col h-screen overflow-hidden">
       <ImpersonationBanner />
 
+      {/* ── Mobile top bar ─────────────────────────────────────────────────── */}
+      <div className="md:hidden flex items-center justify-between px-4 h-14 border-b border-zinc-100 bg-white shrink-0">
+        <div className="flex items-center gap-2">
+          <div className="w-6 h-6 rounded-[6px] bg-[#E63946] flex items-center justify-center shrink-0">
+            <span className="text-white text-[11px] font-black leading-none">R</span>
+          </div>
+          <span className="font-bold text-[15px] text-zinc-900 tracking-tight">Reservely</span>
+        </div>
+        <button
+          onClick={() => setMobileOpen(v => !v)}
+          className="w-9 h-9 flex items-center justify-center rounded-lg hover:bg-zinc-100 transition-colors"
+          aria-label="Toggle menu"
+        >
+          {mobileOpen ? <X size={20} className="text-zinc-600" /> : <Menu size={20} className="text-zinc-600" />}
+        </button>
+      </div>
+
+      {/* ── Mobile sidebar overlay ──────────────────────────────────────────── */}
+      {mobileOpen && (
+        <div
+          className="md:hidden fixed inset-0 z-40 bg-black/40"
+          onClick={() => setMobileOpen(false)}
+        />
+      )}
+
       <div className="flex flex-1 overflow-hidden">
       {/* ── Sidebar ── */}
-      <aside className="w-[230px] shrink-0 bg-white border-r border-zinc-100 flex flex-col">
+      <aside className={`
+        fixed md:relative inset-y-0 left-0 z-50
+        w-[230px] shrink-0 bg-white border-r border-zinc-100 flex flex-col
+        transition-transform duration-200
+        ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}
+        md:translate-x-0
+      `}>
 
-        {/* Logo strip */}
-        <div className="flex items-center gap-2.5 px-5 h-14 border-b border-zinc-100 shrink-0">
+        {/* Logo strip — hidden on mobile (shown in top bar instead) */}
+        <div className="hidden md:flex items-center gap-2.5 px-5 h-14 border-b border-zinc-100 shrink-0">
           <div className="w-6 h-6 rounded-[6px] bg-[#E63946] flex items-center justify-center shrink-0">
             <span className="text-white text-[11px] font-black leading-none">R</span>
           </div>
@@ -144,6 +177,7 @@ export function DashboardShell({ children, userRole, restaurantName, userName, w
                       <li key={href}>
                         <Link
                           href={href}
+                          onClick={() => setMobileOpen(false)}
                           className={`flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[13px] font-medium transition-all duration-100 ${
                             active
                               ? 'text-[#E63946] bg-[#E63946]/[0.07]'

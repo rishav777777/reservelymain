@@ -102,7 +102,7 @@ export function AnalyticsClient({ initialData }: { initialData: AnalyticsData })
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <MetricCard label={tx.approvalRate}     value={summary.approvalRate} />
         <MetricCard label={tx.noShowRate}      value={summary.noShowRate} />
         <MetricCard label={tx.cancellationRate} value={summary.cancellationRate} />
