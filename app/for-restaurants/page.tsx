@@ -206,7 +206,7 @@ export default function ForRestaurantsPage() {
 
       {/* ── OWNER STATS STRIP ─────────────────────────────────────────────── */}
       <section className="bg-white dark:bg-zinc-900 border-b border-zinc-100 dark:border-zinc-800 transition-colors">
-        <div className="max-w-3xl mx-auto px-6 py-6 grid grid-cols-3 gap-6">
+        <div className="max-w-3xl mx-auto px-6 py-6 grid grid-cols-1 sm:grid-cols-3 gap-6">
           {tx.ownerStats.map((stat, i) => {
             const Icon = STAT_ICONS[i]
             return (

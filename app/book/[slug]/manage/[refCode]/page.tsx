@@ -183,7 +183,7 @@ export default function ManageReservationPage() {
             </div>
 
             {/* Details */}
-            <div style={{ ...GLASS, padding:'20px 24px', display:'grid', gridTemplateColumns:'1fr 1fr', gap:'16px' }}>
+            <div style={{ ...GLASS, padding:'20px 24px', display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(180px, 1fr))', gap:'16px' }}>
               <div style={{ display:'flex', gap:'10px', alignItems:'flex-start' }}>
                 <CalendarDays size={16} color="#0D472B" style={{ marginTop:'2px', flexShrink:0 }} />
                 <div>
